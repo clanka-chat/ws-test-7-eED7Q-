@@ -65,26 +65,40 @@ export default function ProjectPage({
   const [joinStatus, setJoinStatus] = useState<"none" | "pending" | "accepted" | "rejected">("none");
 
   useEffect(() => {
-    async function load() {
-      const res = await fetch(`/api/projects/${slug}`);
-      if (res.ok) {
-        const data: ApiProject = await res.json();
-        setProject(data);
-
-        if (userId && userId !== data.creator_id) {
-          const joinRes = await fetch(`/api/projects/${slug}/join`);
-          if (joinRes.ok) {
-            const joinData: { status: string } = await joinRes.json();
-            setJoinStatus(joinData.status as "pending" | "accepted" | "rejected");
-          }
+    async function loadProject() {
+      try {
+        const res = await fetch(`/api/projects/${slug}`);
+        if (res.ok) {
+          setProject(await res.json());
+        } else {
+          setNotFound(true);
         }
-      } else {
+      } catch {
         setNotFound(true);
       }
       setLoading(false);
     }
-    load();
-  }, [slug, userId]);
+    loadProject();
+  }, [slug]);
+
+  useEffect(() => {
+    if (!userId || !project || userId === project.creator_id) return;
+    async function loadJoinStatus() {
+      try {
+        const joinRes = await fetch(`/api/projects/${slug}/join`);
+        if (joinRes.ok) {
+          const joinData: { status: string } = await joinRes.json();
+          const s = joinData.status;
+          if (s === "pending" || s === "accepted" || s === "rejected") {
+            setJoinStatus(s);
+          }
+        }
+      } catch {
+        // join status check failed silently — leave as "none"
+      }
+    }
+    loadJoinStatus();
+  }, [slug, userId, project?.creator_id]);
 
   async function handleDelete() {
     if (!window.confirm("Are you sure you want to delete this project? This cannot be undone.")) {
@@ -323,6 +337,11 @@ export default function ProjectPage({
             {joinStatus === "accepted" && (
               <p className="rounded-md bg-status-success/15 px-4 py-3 text-small text-status-success">
                 You&apos;re a collaborator on this project
+              </p>
+            )}
+            {joinStatus === "rejected" && (
+              <p className="rounded-md bg-status-error/15 px-4 py-3 text-small text-status-error">
+                Your request to join was declined
               </p>
             )}
           </div>
