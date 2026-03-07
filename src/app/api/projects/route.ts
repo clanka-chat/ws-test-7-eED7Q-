@@ -36,7 +36,10 @@ export async function GET(request: NextRequest) {
     .order('created_at', { ascending: false })
 
   if (stage) query = query.eq('stage', stage)
-  if (search) query = query.ilike('name', `%${search}%`)
+  if (search) {
+    const sanitized = search.replace(/[%_]/g, '\\$&')
+    query = query.ilike('name', `%${sanitized}%`)
+  }
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
