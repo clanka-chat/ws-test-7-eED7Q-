@@ -1,3 +1,5 @@
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+
 export type Profile = {
   id: string
   username: string
@@ -92,7 +94,7 @@ export type WorkspaceUpdate = {
   title: string
   description: string | null
   source: string
-  metadata: Record<string, unknown> | null
+  metadata: Json | null
   created_at: string
 }
 
@@ -100,7 +102,7 @@ export type WorkspaceTerm = {
   id: string
   project_id: string
   created_by: string
-  splits: Record<string, unknown>
+  splits: Json
   accepted_by: string[]
   status: string
   created_at: string

@@ -120,10 +120,12 @@ create table collaborators (
 
 alter table collaborators enable row level security;
 
-create policy "collaborators: project members read"
+create policy "collaborators: own membership read"
+  on collaborators for select using (auth.uid() = user_id);
+
+create policy "collaborators: project creator read"
   on collaborators for select using (
-    exists (select 1 from collaborators c where c.project_id = collaborators.project_id and c.user_id = auth.uid())
-    or exists (select 1 from projects where projects.id = collaborators.project_id and projects.creator_id = auth.uid())
+    exists (select 1 from projects where projects.id = collaborators.project_id and projects.creator_id = auth.uid())
   );
 
 create policy "collaborators: project creator write"
