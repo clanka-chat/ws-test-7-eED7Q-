@@ -66,20 +66,12 @@ export function Nav({ user }: NavProps) {
               <span>{user.username}</span>
             </Link>
           ) : (
-            <>
-              <Link
-                href="/login"
-                className="rounded-md px-3 py-1.5 text-small text-text-secondary transition-colors duration-150 hover:text-text-primary"
-              >
-                Log in
-              </Link>
-              <Link
-                href="/login"
-                className="rounded-md bg-accent px-4 py-1.5 text-small font-medium text-bg-base transition-colors duration-150 hover:bg-accent-hover"
-              >
-                Sign up
-              </Link>
-            </>
+            <Link
+              href="/login"
+              className="rounded-md bg-accent px-4 py-1.5 text-small font-medium text-bg-base transition-colors duration-150 hover:bg-accent-hover"
+            >
+              Get Started
+            </Link>
           )}
         </div>
 
@@ -127,22 +119,13 @@ export function Nav({ user }: NavProps) {
                 <span>{user.username}</span>
               </Link>
             ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="rounded-md px-3 py-2 text-small text-text-secondary transition-colors duration-150 hover:text-text-primary"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  Log in
-                </Link>
-                <Link
-                  href="/login"
-                  className="rounded-md bg-accent px-3 py-2 text-center text-small font-medium text-bg-base transition-colors duration-150 hover:bg-accent-hover"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  Sign up
-                </Link>
-              </>
+              <Link
+                href="/login"
+                className="rounded-md bg-accent px-3 py-2 text-center text-small font-medium text-bg-base transition-colors duration-150 hover:bg-accent-hover"
+                onClick={() => setMobileOpen(false)}
+              >
+                Get Started
+              </Link>
             )}
           </div>
         </div>
