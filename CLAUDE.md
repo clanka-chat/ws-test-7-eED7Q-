@@ -56,12 +56,17 @@ npm install -D supabase
 
 Follow `hackathon-plan.md` → "Hackathon Build Order" section. There are **6 phases, 31 numbered items**. Work phase by phase, commit after each.
 
-When the human says "Do Phase X":
-1. Open `hackathon-plan.md` and find that phase
-2. Read every referenced section (schema, auth middleware, Supabase client pattern, etc.)
-3. Read `design-discovery.md` for any UI you're building (colors, tokens, component specs, page layouts)
-4. Build exactly what the docs say
-5. Only build items that belong to YOUR role (see CLAUDE.local.md)
+**IMPORTANT — Phase 4 onward: Item-by-item workflow.**
+Starting from Phase 4, we build ONE numbered item at a time. The human will tell you which specific item to build (e.g., "Do Item 16 — Messages"). Build ONLY that item, nothing else. Do NOT build the next item — the human will test in the browser first and come back with instructions for the next item.
+
+When the human says "Do Item X":
+1. Open `hackathon-plan.md` and find that item
+2. Read every referenced section (schema, API routes, relevant tables, etc.)
+3. Read `design-discovery.md` for any UI you're building
+4. Build ONLY that item — nothing more
+5. Only build parts that belong to YOUR role (see CLAUDE.local.md)
+6. Run `tsc --noEmit` and commit when done
+7. WAIT — do not proceed to the next item
 
 ---
 
