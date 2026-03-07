@@ -62,20 +62,43 @@ export default function ProjectPage({
   const [notFound, setNotFound] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [joinStatus, setJoinStatus] = useState<"none" | "pending" | "accepted" | "rejected">("none");
 
   useEffect(() => {
-    async function load() {
-      const res = await fetch(`/api/projects/${slug}`);
-      if (res.ok) {
-        const data: ApiProject = await res.json();
-        setProject(data);
-      } else {
+    async function loadProject() {
+      try {
+        const res = await fetch(`/api/projects/${slug}`);
+        if (res.ok) {
+          setProject(await res.json());
+        } else {
+          setNotFound(true);
+        }
+      } catch {
         setNotFound(true);
       }
       setLoading(false);
     }
-    load();
+    loadProject();
   }, [slug]);
+
+  useEffect(() => {
+    if (!userId || !project || userId === project.creator_id) return;
+    async function loadJoinStatus() {
+      try {
+        const joinRes = await fetch(`/api/projects/${slug}/join`);
+        if (joinRes.ok) {
+          const joinData: { status: string } = await joinRes.json();
+          const s = joinData.status;
+          if (s === "pending" || s === "accepted" || s === "rejected") {
+            setJoinStatus(s);
+          }
+        }
+      } catch {
+        // join status check failed silently — leave as "none"
+      }
+    }
+    loadJoinStatus();
+  }, [slug, userId, project?.creator_id]);
 
   async function handleDelete() {
     if (!window.confirm("Are you sure you want to delete this project? This cannot be undone.")) {
@@ -296,13 +319,31 @@ export default function ProjectPage({
 
         {user && userId && userId !== project.creator_id && (
           <div className="mt-10">
-            <JoinRequestButton
-              projectSlug={project.slug}
-              projectName={project.name}
-              openRoles={roles
-                .filter((r) => !r.filled)
-                .map((r) => r.role_title)}
-            />
+            {joinStatus === "none" && (
+              <JoinRequestButton
+                projectSlug={project.slug}
+                projectName={project.name}
+                openRoles={roles
+                  .filter((r) => !r.filled)
+                  .map((r) => r.role_title)}
+                onSuccess={() => setJoinStatus("pending")}
+              />
+            )}
+            {joinStatus === "pending" && (
+              <p className="rounded-md bg-status-info/15 px-4 py-3 text-small text-status-info">
+                Request pending — waiting for the creator to respond
+              </p>
+            )}
+            {joinStatus === "accepted" && (
+              <p className="rounded-md bg-status-success/15 px-4 py-3 text-small text-status-success">
+                You&apos;re a collaborator on this project
+              </p>
+            )}
+            {joinStatus === "rejected" && (
+              <p className="rounded-md bg-status-error/15 px-4 py-3 text-small text-status-error">
+                Your request to join was declined
+              </p>
+            )}
           </div>
         )}
 
