@@ -44,7 +44,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
   const body = await request.json()
   const allowedFields = [
-    'name', 'description', 'stage', 'tech_stack', 'business_model',
+    'name', 'description', 'looking_for', 'stage', 'tech_stack', 'business_model',
     'domain_plan', 'time_commitment', 'timezone', 'is_public',
     'target_launch', 'roadmap', 'tags',
   ] as const

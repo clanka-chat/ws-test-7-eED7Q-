@@ -28,6 +28,7 @@ export type Project = {
   description: string | null
   stage: string
   tech_stack: string[]
+  looking_for: string | null
   business_model: string | null
   domain_plan: string | null
   time_commitment: string | null
