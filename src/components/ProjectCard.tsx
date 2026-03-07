@@ -1,8 +1,13 @@
 import Link from "next/link";
 import type { Project, ProjectRole } from "../../types/database";
 
+type ProjectCardProject = Pick<
+  Project,
+  "id" | "slug" | "name" | "description" | "stage" | "tech_stack"
+>;
+
 type ProjectCardProps = {
-  project: Project;
+  project: ProjectCardProject;
   roles?: ProjectRole[];
   creatorName?: string;
 };

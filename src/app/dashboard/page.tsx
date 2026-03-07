@@ -17,7 +17,7 @@ import {
   XCircle,
   Loader2,
 } from "lucide-react";
-import type { Project, ProjectRole } from "../../../types/database";
+import type { ProjectRole } from "../../../types/database";
 
 type DashboardProjectRole = ProjectRole;
 
@@ -217,7 +217,7 @@ export default function DashboardPage() {
                 {myProjects.map((p) => (
                   <ProjectCard
                     key={p.id}
-                    project={p as unknown as Project}
+                    project={p}
                     roles={p.project_roles}
                   />
                 ))}

@@ -52,7 +52,7 @@ export default function ProjectPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
-  const { user, loading: userLoading, unreadMessages } = useUser();
+  const { user, userId, loading: userLoading, unreadMessages } = useUser();
   const [project, setProject] = useState<ApiProject | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -242,7 +242,7 @@ export default function ProjectPage({
           </div>
         )}
 
-        {roles.some((r) => !r.filled) && (
+        {user && userId !== project.creator_id && roles.some((r) => !r.filled) && (
           <div className="mt-10">
             <JoinRequestButton
               projectSlug={project.slug}

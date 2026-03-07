@@ -31,7 +31,7 @@ export function JoinRequestButton({
       const res = await fetch(`/api/projects/${projectSlug}/join`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: message || null }),
+        body: JSON.stringify({ message: message || null, role: selectedRole }),
       });
 
       if (res.ok) {
