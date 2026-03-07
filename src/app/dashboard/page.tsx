@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/Button";
+import { ProjectCard } from "@/components/ProjectCard";
 import { useUser } from "@/components/useUser";
 import {
   Plus,
@@ -16,18 +17,17 @@ import {
   XCircle,
   Loader2,
 } from "lucide-react";
+import type { Project, ProjectRole } from "../../../types/database";
 
-type DashboardProjectRole = {
-  id: string;
-  role_title: string;
-  filled: boolean;
-};
+type DashboardProjectRole = ProjectRole;
 
 type DashboardProject = {
   id: string;
   slug: string;
   name: string;
+  description: string | null;
   stage: string;
+  tech_stack: string[];
   created_at: string;
   project_roles: DashboardProjectRole[];
 };
@@ -105,6 +105,7 @@ export default function DashboardPage() {
   const pendingRequests = data?.pending_requests ?? [];
   const myRequests = data?.my_requests ?? [];
   const earnings = data?.earnings ?? { total: 0, this_month: 0, currency: "USD" };
+  const hasProjects = myProjects.length + collaborations.length > 0;
 
   return (
     <>
@@ -117,12 +118,14 @@ export default function DashboardPage() {
               Your projects, requests, and earnings at a glance.
             </p>
           </div>
-          <Link href="/new">
-            <Button size="md">
-              <Plus size={16} />
-              New Project
-            </Button>
-          </Link>
+          {hasProjects && (
+            <Link href="/new">
+              <Button size="md">
+                <Plus size={16} />
+                New Project
+              </Button>
+            </Link>
+          )}
         </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -187,40 +190,29 @@ export default function DashboardPage() {
 
         {activeTab === "projects" && (
           <div className="mt-6">
-            {myProjects.length + collaborations.length > 0 ? (
-              <div className="space-y-3">
+            {hasProjects ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {myProjects.map((p) => (
-                  <Link
+                  <ProjectCard
                     key={p.id}
-                    href={`/project/${p.slug}`}
-                    className="flex items-center justify-between rounded-lg border border-border-default bg-bg-surface p-4 transition-colors duration-150 hover:border-border-strong"
-                  >
-                    <div>
-                      <p className="text-small font-medium text-text-heading">{p.name}</p>
-                      <p className="mt-0.5 text-caption text-text-muted">
-                        Creator &middot; {p.project_roles.filter((r) => r.filled).length}/{p.project_roles.length} roles filled
-                      </p>
-                    </div>
-                    <span className="rounded-sm bg-bg-elevated px-2 py-0.5 font-mono text-caption text-text-muted">
-                      {p.stage}
-                    </span>
-                  </Link>
+                    project={p as unknown as Project}
+                    roles={p.project_roles}
+                  />
                 ))}
                 {collaborations.map((c) => (
                   <Link
                     key={c.projects.id}
                     href={`/project/${c.projects.slug}`}
-                    className="flex items-center justify-between rounded-lg border border-border-default bg-bg-surface p-4 transition-colors duration-150 hover:border-border-strong"
+                    className="group block rounded-lg border border-border-default bg-bg-surface p-4 transition-all duration-150 hover:scale-[1.01] hover:border-border-strong hover:shadow-md"
                   >
-                    <div>
-                      <p className="text-small font-medium text-text-heading">{c.projects.name}</p>
-                      <p className="mt-0.5 text-caption text-text-muted">
-                        {c.role} &middot; {c.revenue_split}% split
-                      </p>
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-h3 font-semibold text-text-heading group-hover:text-accent">
+                        {c.projects.name}
+                      </h3>
                     </div>
-                    <span className="rounded-sm bg-bg-elevated px-2 py-0.5 font-mono text-caption text-text-muted">
-                      {c.projects.stage}
-                    </span>
+                    <p className="mt-2 text-small text-text-muted">
+                      {c.role} &middot; {c.revenue_split}% split
+                    </p>
                   </Link>
                 ))}
               </div>

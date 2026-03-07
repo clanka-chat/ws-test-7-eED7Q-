@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { useUser } from "@/components/useUser";
 import { MessageSquare, Loader2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 
 type ApiConversation = {
   conversation_id: string;
@@ -38,63 +37,33 @@ function formatTime(dateStr: string): string {
 }
 
 export default function MessagesPage() {
-  const router = useRouter();
+  const { user, loading: userLoading } = useUser({ redirectTo: "/login" });
   const [conversations, setConversations] = useState<ApiConversation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<{
-    username: string;
-    avatar_url: string;
-  } | null>(null);
 
   useEffect(() => {
     async function load() {
-      const supabase = createClient();
-      const {
-        data: { user: authUser },
-      } = await supabase.auth.getUser();
-
-      if (!authUser) {
-        router.push("/login");
-        return;
-      }
-
-      // Get profile for Nav
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("username, avatar_url")
-        .eq("id", authUser.id)
-        .single();
-
-      if (profile) {
-        setUser({
-          username: profile.username,
-          avatar_url:
-            profile.avatar_url ??
-            `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${profile.username}`,
-        });
-      }
-
-      // Fetch conversations
       const res = await fetch("/api/messages");
       if (res.ok) {
         const data: ApiConversation[] = await res.json();
         setConversations(data);
       }
-
       setLoading(false);
     }
-    load();
-  }, [router]);
+    if (!userLoading && user) {
+      load();
+    }
+  }, [userLoading, user]);
 
   const totalUnread = conversations.reduce(
     (sum, c) => sum + c.unread_count,
     0
   );
 
-  if (loading) {
+  if (userLoading || loading) {
     return (
       <>
-        <Nav user={user} />
+        <Nav user={user} loading={userLoading} />
         <main className="mx-auto flex max-w-2xl items-center justify-center px-4 py-24">
           <Loader2 size={24} className="animate-spin text-text-muted" />
         </main>
@@ -105,7 +74,7 @@ export default function MessagesPage() {
 
   return (
     <>
-      <Nav user={user} unreadMessages={totalUnread} />
+      <Nav user={user} loading={userLoading} unreadMessages={totalUnread} />
       <main className="mx-auto max-w-2xl px-4 py-10">
         <h1 className="text-h1 font-bold text-text-heading">Messages</h1>
         <p className="mt-1 text-body text-text-secondary">

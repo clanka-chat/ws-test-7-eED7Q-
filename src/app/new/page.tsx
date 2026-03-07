@@ -331,7 +331,7 @@ export default function NewProjectPage() {
               type="button"
               variant="ghost"
               size="lg"
-              onClick={() => router.back()}
+              onClick={() => router.push("/dashboard")}
             >
               Cancel
             </Button>
