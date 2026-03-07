@@ -69,6 +69,7 @@ export default function NewProjectPage() {
       body: JSON.stringify({
         name: title,
         description,
+        looking_for: lookingFor || null,
         stage,
         tech_stack: techStack,
         business_model: businessModel || null,

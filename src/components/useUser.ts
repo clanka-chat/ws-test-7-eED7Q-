@@ -9,7 +9,7 @@ type NavUser = {
   avatar_url: string;
 };
 
-export function useUser(options?: { redirectTo?: string }) {
+export function useUser(options?: { redirectTo?: string; skipUnread?: boolean }) {
   const router = useRouter();
   const [user, setUser] = useState<NavUser | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -31,14 +31,27 @@ export function useUser(options?: { redirectTo?: string }) {
         return;
       }
 
+      // Parallelize independent fetches
+      const [profileResult, unreadCount] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("username, avatar_url")
+          .eq("id", authUser.id)
+          .single(),
+        options?.skipUnread
+          ? Promise.resolve(0)
+          : fetch("/api/messages")
+              .then(async (res) => {
+                if (!res.ok) return 0;
+                const conversations: { unread_count: number }[] = await res.json();
+                return conversations.reduce((sum, c) => sum + c.unread_count, 0);
+              })
+              .catch(() => 0),
+      ]);
+
+      // Batch all state updates synchronously so React renders once
+      const profile = profileResult.data;
       setUserId(authUser.id);
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("username, avatar_url")
-        .eq("id", authUser.id)
-        .single();
-
       if (profile) {
         setUser({
           username: profile.username,
@@ -47,23 +60,11 @@ export function useUser(options?: { redirectTo?: string }) {
             `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${profile.username}`,
         });
       }
-
-      // Fetch unread message count
-      try {
-        const res = await fetch("/api/messages");
-        if (res.ok) {
-          const conversations: { unread_count: number }[] = await res.json();
-          const total = conversations.reduce((sum, c) => sum + c.unread_count, 0);
-          setUnreadMessages(total);
-        }
-      } catch {
-        // Silently fail — badge just won't show
-      }
-
+      setUnreadMessages(unreadCount);
       setLoading(false);
     }
     load();
-  }, [router, options?.redirectTo]);
+  }, [router, options?.redirectTo, options?.skipUnread]);
 
   return { user, userId, loading, unreadMessages };
 }

@@ -196,7 +196,7 @@ export function Nav({ user, loading = false, unreadMessages = 0 }: NavProps) {
                   Messages
                   {unreadMessages > 0 && (
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-caption font-bold text-bg-base">
-                      {unreadMessages}
+                      {unreadMessages > 9 ? "9+" : unreadMessages}
                     </span>
                   )}
                 </Link>

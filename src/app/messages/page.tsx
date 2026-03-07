@@ -37,7 +37,7 @@ function formatTime(dateStr: string): string {
 }
 
 export default function MessagesPage() {
-  const { user, loading: userLoading, unreadMessages } = useUser({ redirectTo: "/login" });
+  const { user, loading: userLoading } = useUser({ redirectTo: "/login", skipUnread: true });
   const [conversations, setConversations] = useState<ApiConversation[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -54,6 +54,8 @@ export default function MessagesPage() {
       load();
     }
   }, [userLoading, user]);
+
+  const unreadMessages = conversations.reduce((sum, c) => sum + c.unread_count, 0);
 
   if (userLoading || loading) {
     return (
