@@ -61,6 +61,7 @@ export default function ProjectPage({
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -81,14 +82,18 @@ export default function ProjectPage({
       return;
     }
     setDeleting(true);
+    setDeleteError(null);
     try {
       const res = await fetch(`/api/projects/${slug}`, { method: "DELETE" });
       if (res.ok) {
         router.push("/dashboard");
       } else {
+        const err = await res.json().catch(() => ({ error: "Failed to delete project" }));
+        setDeleteError(err.error ?? "Failed to delete project");
         setDeleting(false);
       }
     } catch {
+      setDeleteError("Network error. Please try again.");
       setDeleting(false);
     }
   }
@@ -280,7 +285,7 @@ export default function ProjectPage({
           </div>
         )}
 
-        {user && userId !== project.creator_id && (
+        {user && userId && userId !== project.creator_id && (
           <div className="mt-10">
             <JoinRequestButton
               projectSlug={project.slug}
@@ -292,18 +297,20 @@ export default function ProjectPage({
           </div>
         )}
 
-        {user && userId === project.creator_id && (
+        {user && userId && userId === project.creator_id && (
           <div className="mt-10 border-t border-border-subtle pt-6">
             <Button
-              variant="ghost"
+              variant="danger"
               size="md"
               disabled={deleting}
               onClick={handleDelete}
-              className="text-status-error hover:bg-status-error/10 hover:text-status-error"
             >
               <Trash2 size={16} />
               {deleting ? "Deleting..." : "Delete project"}
             </Button>
+            {deleteError && (
+              <p className="mt-2 text-small text-status-error">{deleteError}</p>
+            )}
           </div>
         )}
       </main>
