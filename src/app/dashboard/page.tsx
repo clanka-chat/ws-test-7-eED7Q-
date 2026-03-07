@@ -73,6 +73,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"projects" | "requests">("projects");
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [processingRequest, setProcessingRequest] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -87,6 +88,27 @@ export default function DashboardPage() {
       load();
     }
   }, [userLoading, user]);
+
+  async function handleRequest(requestId: string, status: "accepted" | "rejected") {
+    setProcessingRequest(requestId);
+    try {
+      const res = await fetch(`/api/join-requests/${requestId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok && data) {
+        setData({
+          ...data,
+          pending_requests: data.pending_requests.filter((r) => r.id !== requestId),
+        });
+      }
+    } catch {
+      // silently fail — user can retry
+    } finally {
+      setProcessingRequest(null);
+    }
+  }
 
   if (userLoading || loading) {
     return (
@@ -276,11 +298,21 @@ export default function DashboardPage() {
                           </p>
                         </div>
                         <div className="flex shrink-0 gap-2">
-                          <Button size="sm" variant="primary">
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            disabled={processingRequest === req.id}
+                            onClick={() => handleRequest(req.id, "accepted")}
+                          >
                             <CheckCircle size={14} />
-                            Accept
+                            {processingRequest === req.id ? "..." : "Accept"}
                           </Button>
-                          <Button size="sm" variant="ghost">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={processingRequest === req.id}
+                            onClick={() => handleRequest(req.id, "rejected")}
+                          >
                             <XCircle size={14} />
                             Decline
                           </Button>

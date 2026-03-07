@@ -20,13 +20,31 @@ export function JoinRequestButton({
   );
   const [message, setMessage] = useState("");
   const [selectedRole, setSelectedRole] = useState(openRoles[0] ?? "");
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setStatus("submitting");
-    // TODO: POST /api/projects/${projectSlug}/join — Agent 1 builds this
-    await new Promise((r) => setTimeout(r, 500));
-    setStatus("sent");
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/projects/${projectSlug}/join`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: message || null }),
+      });
+
+      if (res.ok) {
+        setStatus("sent");
+      } else {
+        const err = await res.json().catch(() => ({ error: "Something went wrong" }));
+        setError(err.error ?? "Something went wrong");
+        setStatus("form");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+      setStatus("form");
+    }
   }
 
   if (status === "sent") {
@@ -54,6 +72,10 @@ export function JoinRequestButton({
             <X size={18} />
           </button>
         </div>
+
+        {error && (
+          <p className="mt-3 text-small text-status-error">{error}</p>
+        )}
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           {openRoles.length > 1 && (
