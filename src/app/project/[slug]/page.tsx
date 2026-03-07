@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { Button } from "@/components/Button";
 import { JoinRequestButton } from "@/components/JoinRequestButton";
 import { useUser } from "@/components/useUser";
 import {
@@ -12,6 +14,7 @@ import {
   ExternalLink,
   MapPin,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import type { Project, ProjectRole } from "../../../../types/database";
 
@@ -52,10 +55,13 @@ export default function ProjectPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
+  const router = useRouter();
   const { user, userId, loading: userLoading, unreadMessages } = useUser();
   const [project, setProject] = useState<ApiProject | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -70,6 +76,27 @@ export default function ProjectPage({
     }
     load();
   }, [slug]);
+
+  async function handleDelete() {
+    if (!window.confirm("Are you sure you want to delete this project? This cannot be undone.")) {
+      return;
+    }
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/projects/${slug}`, { method: "DELETE" });
+      if (res.ok) {
+        router.push("/dashboard");
+      } else {
+        const err = await res.json().catch(() => ({ error: "Failed to delete project" }));
+        setDeleteError(err.error ?? "Failed to delete project");
+        setDeleting(false);
+      }
+    } catch {
+      setDeleteError("Network error. Please try again.");
+      setDeleting(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -134,16 +161,16 @@ export default function ProjectPage({
         </div>
 
         <div className="mt-6 flex flex-wrap gap-4 text-small text-text-secondary">
-          {project.time_commitment && (
+          {project.target_launch && (
             <span className="flex items-center gap-1.5">
               <Clock size={14} className="text-text-muted" />
-              {project.time_commitment}
+              {project.target_launch}
             </span>
           )}
           {project.timezone && (
             <span className="flex items-center gap-1.5">
               <MapPin size={14} className="text-text-muted" />
-              {project.timezone}
+              {project.timezone.replace(/_/g, " ")}
             </span>
           )}
           {project.business_model && (
@@ -184,6 +211,22 @@ export default function ProjectPage({
             <p className="mt-3 whitespace-pre-line text-body leading-relaxed text-text-secondary">
               {project.description}
             </p>
+          </div>
+        )}
+
+        {project.roadmap.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-h3 font-semibold text-text-heading">Roadmap</h2>
+            <ol className="mt-3 space-y-2">
+              {project.roadmap.map((goal, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-muted font-mono text-caption font-bold text-accent">
+                    {i + 1}
+                  </span>
+                  <span className="text-body text-text-secondary">{goal}</span>
+                </li>
+              ))}
+            </ol>
           </div>
         )}
 
@@ -242,7 +285,7 @@ export default function ProjectPage({
           </div>
         )}
 
-        {user && userId !== project.creator_id && roles.some((r) => !r.filled) && (
+        {user && userId && userId !== project.creator_id && (
           <div className="mt-10">
             <JoinRequestButton
               projectSlug={project.slug}
@@ -251,6 +294,23 @@ export default function ProjectPage({
                 .filter((r) => !r.filled)
                 .map((r) => r.role_title)}
             />
+          </div>
+        )}
+
+        {user && userId && userId === project.creator_id && (
+          <div className="mt-10 border-t border-border-subtle pt-6">
+            <Button
+              variant="danger"
+              size="md"
+              disabled={deleting}
+              onClick={handleDelete}
+            >
+              <Trash2 size={16} />
+              {deleting ? "Deleting..." : "Delete project"}
+            </Button>
+            {deleteError && (
+              <p className="mt-2 text-small text-status-error">{deleteError}</p>
+            )}
           </div>
         )}
       </main>
