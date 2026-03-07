@@ -2,16 +2,17 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { Menu, X, MessageSquare } from "lucide-react";
 
 type NavProps = {
   user?: {
     username: string;
     avatar_url: string;
   } | null;
+  unreadMessages?: number;
 };
 
-export function Nav({ user }: NavProps) {
+export function Nav({ user, unreadMessages = 0 }: NavProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -43,12 +44,26 @@ export function Nav({ user }: NavProps) {
             Explore
           </Link>
           {user && (
-            <Link
-              href="/dashboard"
-              className="text-small text-text-secondary transition-colors duration-150 hover:text-text-primary"
-            >
-              Dashboard
-            </Link>
+            <>
+              <Link
+                href="/dashboard"
+                className="text-small text-text-secondary transition-colors duration-150 hover:text-text-primary"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/messages"
+                className="relative flex items-center gap-1 text-small text-text-secondary transition-colors duration-150 hover:text-text-primary"
+              >
+                <MessageSquare size={16} />
+                Messages
+                {unreadMessages > 0 && (
+                  <span className="absolute -right-3 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-bg-base">
+                    {unreadMessages > 9 ? "9+" : unreadMessages}
+                  </span>
+                )}
+              </Link>
+            </>
           )}
         </div>
 
@@ -96,13 +111,28 @@ export function Nav({ user }: NavProps) {
               Explore
             </Link>
             {user && (
-              <Link
-                href="/dashboard"
-                className="rounded-md px-3 py-2 text-small text-text-secondary transition-colors duration-150 hover:bg-bg-surface hover:text-text-primary"
-                onClick={() => setMobileOpen(false)}
-              >
-                Dashboard
-              </Link>
+              <>
+                <Link
+                  href="/dashboard"
+                  className="rounded-md px-3 py-2 text-small text-text-secondary transition-colors duration-150 hover:bg-bg-surface hover:text-text-primary"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  href="/messages"
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-small text-text-secondary transition-colors duration-150 hover:bg-bg-surface hover:text-text-primary"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <MessageSquare size={16} />
+                  Messages
+                  {unreadMessages > 0 && (
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-caption font-bold text-bg-base">
+                      {unreadMessages}
+                    </span>
+                  )}
+                </Link>
+              </>
             )}
             <div className="my-2 border-t border-border-subtle" />
             {user ? (
