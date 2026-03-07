@@ -63,6 +63,7 @@ export default function ProjectPage({
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [joinStatus, setJoinStatus] = useState<"none" | "pending" | "accepted" | "rejected">("none");
+  const [joinStatusLoading, setJoinStatusLoading] = useState(true);
 
   useEffect(() => {
     async function loadProject() {
@@ -82,7 +83,10 @@ export default function ProjectPage({
   }, [slug]);
 
   useEffect(() => {
-    if (!userId || !project || userId === project.creator_id) return;
+    if (!userId || !project || userId === project.creator_id) {
+      setJoinStatusLoading(false);
+      return;
+    }
     async function loadJoinStatus() {
       try {
         const joinRes = await fetch(`/api/projects/${slug}/join`);
@@ -96,6 +100,7 @@ export default function ProjectPage({
       } catch {
         // join status check failed silently — leave as "none"
       }
+      setJoinStatusLoading(false);
     }
     loadJoinStatus();
   }, [slug, userId, project?.creator_id]);
@@ -317,7 +322,7 @@ export default function ProjectPage({
           </div>
         )}
 
-        {user && userId && userId !== project.creator_id && (
+        {user && userId && userId !== project.creator_id && !joinStatusLoading && (
           <div className="mt-10">
             {joinStatus === "none" && (
               <JoinRequestButton
