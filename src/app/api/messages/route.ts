@@ -9,36 +9,34 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Get all messages where user is sender or receiver
+  // Get recent messages where user is sender or receiver (bounded)
   const { data: messages, error } = await supabase
     .from('messages')
-    .select('*, profiles!sender_id(username, display_name, avatar_url), profiles!receiver_id(username, display_name, avatar_url)')
+    .select('*')
     .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
     .order('created_at', { ascending: false })
+    .limit(500)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Group by conversation_id, return latest message + other user's profile + unread count
+  // Group by conversation_id, track latest message + other user ID + unread count
   const conversationMap = new Map<string, {
     conversation_id: string
     latest_message: typeof messages[0]
-    other_user: { username: string; display_name: string | null; avatar_url: string | null }
+    other_user_id: string
     unread_count: number
   }>()
 
   for (const msg of messages ?? []) {
     const existing = conversationMap.get(msg.conversation_id)
-
     const isReceiver = msg.receiver_id === user.id
-    const otherProfile = isReceiver
-      ? msg.profiles_sender_id as { username: string; display_name: string | null; avatar_url: string | null }
-      : msg.profiles_receiver_id as { username: string; display_name: string | null; avatar_url: string | null }
+    const otherUserId = isReceiver ? msg.sender_id : msg.receiver_id
 
     if (!existing) {
       conversationMap.set(msg.conversation_id, {
         conversation_id: msg.conversation_id,
         latest_message: msg,
-        other_user: otherProfile,
+        other_user_id: otherUserId,
         unread_count: isReceiver && !msg.read ? 1 : 0,
       })
     } else {
@@ -48,7 +46,26 @@ export async function GET() {
     }
   }
 
-  const conversations = Array.from(conversationMap.values())
+  const grouped = Array.from(conversationMap.values())
+
+  // Fetch other users' profiles in one query
+  const otherUserIds = [...new Set(grouped.map(c => c.other_user_id))]
+  const { data: profiles } = otherUserIds.length > 0
+    ? await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url')
+        .in('id', otherUserIds)
+    : { data: [] }
+
+  const profileMap = new Map((profiles ?? []).map(p => [p.id, p]))
+
+  const conversations = grouped.map(c => ({
+    conversation_id: c.conversation_id,
+    latest_message: c.latest_message,
+    other_user: profileMap.get(c.other_user_id) ?? null,
+    unread_count: c.unread_count,
+  }))
+
   return NextResponse.json(conversations)
 }
 

@@ -8,7 +8,7 @@ export function generateConversationId(userA: string, userB: string): string {
     .update(`${NAMESPACE}:${sorted[0]}:${sorted[1]}`)
     .digest('hex')
 
-  // Format as UUID v4-like (deterministic)
+  // Format as UUID-shaped string (deterministic, not RFC 4122)
   return [
     hash.slice(0, 8),
     hash.slice(8, 12),
