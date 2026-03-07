@@ -3,90 +3,28 @@
 import { useState, useRef, useEffect } from "react";
 import { use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/Button";
-import { ArrowLeft, Send } from "lucide-react";
-import type { Message } from "../../../../types/database";
+import { ArrowLeft, Send, Loader2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
-type ConversationMessage = Message & {
-  senderName: string;
-  senderAvatar: string;
+type ApiMessage = {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  project_id: string | null;
+  read: boolean;
+  created_at: string;
+  profiles: {
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+  };
 };
-
-const MOCK_USER = {
-  id: "u1",
-  username: "spaghettipete",
-  avatar_url:
-    "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=spaghettipete",
-};
-
-const MOCK_OTHER_USER = {
-  id: "u7",
-  username: "reactrachel",
-  display_name: "Rachel",
-  avatar_url:
-    "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=reactrachel",
-};
-
-const MOCK_MESSAGES: ConversationMessage[] = [
-  {
-    id: "m1",
-    conversation_id: "conv-1",
-    sender_id: "u7",
-    receiver_id: "u1",
-    content:
-      "Hey! I saw the Frontend Dev role on clanka.chat — I have 3 years of React/Next.js experience and would love to help out.",
-    project_id: "1",
-    read: true,
-    created_at: "2026-03-06T14:00:00Z",
-    senderName: "Rachel",
-    senderAvatar:
-      "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=reactrachel",
-  },
-  {
-    id: "m2",
-    conversation_id: "conv-1",
-    sender_id: "u1",
-    receiver_id: "u7",
-    content:
-      "Hey Rachel! That's awesome. What kind of projects have you worked on? We're looking for someone comfortable with Tailwind and the App Router.",
-    project_id: "1",
-    read: true,
-    created_at: "2026-03-06T14:30:00Z",
-    senderName: "Pete",
-    senderAvatar:
-      "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=spaghettipete",
-  },
-  {
-    id: "m3",
-    conversation_id: "conv-1",
-    sender_id: "u7",
-    receiver_id: "u1",
-    content:
-      "I've built a couple SaaS dashboards with Next.js 14/15 and Tailwind. I'm also familiar with Supabase for auth and data. Happy to share my GitHub if you want to see some code.",
-    project_id: "1",
-    read: false,
-    created_at: "2026-03-07T10:15:00Z",
-    senderName: "Rachel",
-    senderAvatar:
-      "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=reactrachel",
-  },
-  {
-    id: "m4",
-    conversation_id: "conv-1",
-    sender_id: "u7",
-    receiver_id: "u1",
-    content:
-      "Also — the 30% revenue split for the Frontend role works for me. When would you want to get started?",
-    project_id: "1",
-    read: false,
-    created_at: "2026-03-07T10:30:00Z",
-    senderName: "Rachel",
-    senderAvatar:
-      "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=reactrachel",
-  },
-];
 
 function formatMessageTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -113,11 +51,89 @@ export default function ConversationPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = use(params);
-  const [messages, setMessages] = useState(MOCK_MESSAGES);
+  const { id: conversationId } = use(params);
+  const router = useRouter();
+  const [messages, setMessages] = useState<ApiMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [user, setUser] = useState<{
+    username: string;
+    avatar_url: string;
+  } | null>(null);
+  const [otherUser, setOtherUser] = useState<{
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    async function load() {
+      const supabase = createClient();
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
+
+      if (!authUser) {
+        router.push("/login");
+        return;
+      }
+
+      setCurrentUserId(authUser.id);
+
+      // Get profile for Nav
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("username, avatar_url")
+        .eq("id", authUser.id)
+        .single();
+
+      if (profile) {
+        setUser({
+          username: profile.username,
+          avatar_url:
+            profile.avatar_url ??
+            `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${profile.username}`,
+        });
+      }
+
+      // Fetch messages
+      const res = await fetch(`/api/messages/${conversationId}`);
+      if (res.ok) {
+        const data: ApiMessage[] = await res.json();
+        setMessages(data);
+
+        // Determine the other user from messages
+        const otherMsg = data.find((m) => m.sender_id !== authUser.id);
+        if (otherMsg) {
+          setOtherUser(otherMsg.profiles);
+        } else if (data.length > 0) {
+          // All messages are from current user — get receiver info from profile query
+          const receiverId = data[0].receiver_id;
+          const { data: receiverProfile } = await supabase
+            .from("profiles")
+            .select("username, display_name, avatar_url")
+            .eq("id", receiverId)
+            .single();
+          if (receiverProfile) {
+            setOtherUser(receiverProfile);
+          }
+        }
+      }
+
+      // Mark messages as read
+      await fetch("/api/messages/read", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: conversationId }),
+      });
+
+      setLoading(false);
+    }
+    load();
+  }, [conversationId, router]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -126,30 +142,53 @@ export default function ConversationPage({
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     const text = input.trim();
-    if (!text) return;
+    if (!text || !currentUserId) return;
+
+    // Determine receiver_id from existing messages
+    const receiverId = messages.length > 0
+      ? messages[0].sender_id === currentUserId
+        ? messages[0].receiver_id
+        : messages[0].sender_id
+      : null;
+
+    if (!receiverId) return;
 
     setSending(true);
-    // TODO: POST /api/messages — Agent 1 builds this
-    const newMessage: ConversationMessage = {
-      id: `m-${Date.now()}`,
-      conversation_id: id,
-      sender_id: MOCK_USER.id,
-      receiver_id: MOCK_OTHER_USER.id,
-      content: text,
-      project_id: null,
-      read: false,
-      created_at: new Date().toISOString(),
-      senderName: "Pete",
-      senderAvatar: MOCK_USER.avatar_url,
-    };
-    setMessages((prev) => [...prev, newMessage]);
     setInput("");
+
+    const res = await fetch("/api/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        receiver_id: receiverId,
+        content: text,
+      }),
+    });
+
+    if (res.ok) {
+      const newMsg: ApiMessage = await res.json();
+      // The POST response doesn't include the joined profiles, so add it
+      const supabase = createClient();
+      const { data: senderProfile } = await supabase
+        .from("profiles")
+        .select("username, display_name, avatar_url")
+        .eq("id", currentUserId)
+        .single();
+
+      newMsg.profiles = senderProfile ?? {
+        username: user?.username ?? "",
+        display_name: null,
+        avatar_url: user?.avatar_url ?? null,
+      };
+
+      setMessages((prev) => [...prev, newMsg]);
+    }
+
     setSending(false);
   }
 
   // Group messages by date
-  const groupedMessages: { date: string; messages: ConversationMessage[] }[] =
-    [];
+  const groupedMessages: { date: string; messages: ApiMessage[] }[] = [];
   for (const msg of messages) {
     const dateKey = new Date(msg.created_at).toDateString();
     const lastGroup = groupedMessages[groupedMessages.length - 1];
@@ -160,9 +199,21 @@ export default function ConversationPage({
     }
   }
 
+  if (loading) {
+    return (
+      <>
+        <Nav user={user} />
+        <main className="mx-auto flex max-w-2xl items-center justify-center px-4 py-24">
+          <Loader2 size={24} className="animate-spin text-text-muted" />
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
   return (
     <>
-      <Nav user={MOCK_USER} unreadMessages={2} />
+      <Nav user={user} />
       <main className="mx-auto flex max-w-2xl flex-col px-4 py-6">
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-border-subtle pb-4">
@@ -173,19 +224,26 @@ export default function ConversationPage({
           >
             <ArrowLeft size={18} />
           </Link>
-          <img
-            src={MOCK_OTHER_USER.avatar_url}
-            alt={MOCK_OTHER_USER.username}
-            className="h-8 w-8 rounded-full border border-border-default bg-bg-elevated"
-          />
-          <div>
-            <p className="text-small font-medium text-text-heading">
-              {MOCK_OTHER_USER.display_name ?? MOCK_OTHER_USER.username}
-            </p>
-            <p className="text-caption text-text-muted">
-              @{MOCK_OTHER_USER.username}
-            </p>
-          </div>
+          {otherUser && (
+            <>
+              <img
+                src={
+                  otherUser.avatar_url ??
+                  `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${otherUser.username}`
+                }
+                alt={otherUser.username}
+                className="h-8 w-8 rounded-full border border-border-default bg-bg-elevated"
+              />
+              <div>
+                <p className="text-small font-medium text-text-heading">
+                  {otherUser.display_name ?? otherUser.username}
+                </p>
+                <p className="text-caption text-text-muted">
+                  @{otherUser.username}
+                </p>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Messages */}
@@ -199,7 +257,7 @@ export default function ConversationPage({
               </div>
               <div className="space-y-3">
                 {group.messages.map((msg) => {
-                  const isMine = msg.sender_id === MOCK_USER.id;
+                  const isMine = msg.sender_id === currentUserId;
                   return (
                     <div
                       key={msg.id}
@@ -212,7 +270,7 @@ export default function ConversationPage({
                             : "bg-bg-surface text-text-primary"
                         }`}
                       >
-                        <p className="text-small leading-relaxed whitespace-pre-wrap">
+                        <p className="whitespace-pre-wrap text-small leading-relaxed">
                           {msg.content}
                         </p>
                         <p
@@ -235,7 +293,7 @@ export default function ConversationPage({
         {/* Input */}
         <form
           onSubmit={handleSend}
-          className="sticky bottom-0 flex gap-2 border-t border-border-subtle bg-bg-base pt-4 pb-2"
+          className="sticky bottom-0 flex gap-2 border-t border-border-subtle bg-bg-base pb-2 pt-4"
         >
           <input
             type="text"
