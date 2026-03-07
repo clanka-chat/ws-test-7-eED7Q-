@@ -167,15 +167,7 @@ export default function ConversationPage({
 
     if (res.ok) {
       const newMsg: ApiMessage = await res.json();
-      // The POST response doesn't include the joined profiles, so add it
-      const supabase = createClient();
-      const { data: senderProfile } = await supabase
-        .from("profiles")
-        .select("username, display_name, avatar_url")
-        .eq("id", currentUserId)
-        .single();
-
-      newMsg.profiles = senderProfile ?? {
+      newMsg.profiles = {
         username: user?.username ?? "",
         display_name: null,
         avatar_url: user?.avatar_url ?? null,
