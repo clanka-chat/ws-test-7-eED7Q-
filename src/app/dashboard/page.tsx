@@ -91,7 +91,7 @@ export default function DashboardPage() {
   if (userLoading || loading) {
     return (
       <>
-        <Nav user={user} />
+        <Nav user={user} loading={userLoading} />
         <main className="mx-auto flex max-w-6xl items-center justify-center px-4 py-24">
           <Loader2 size={24} className="animate-spin text-text-muted" />
         </main>
@@ -108,7 +108,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Nav user={user} />
+      <Nav user={user} loading={userLoading} />
       <main className="mx-auto max-w-6xl px-4 py-10">
         <div className="flex items-center justify-between">
           <div>

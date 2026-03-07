@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu, X, MessageSquare, LogOut } from "lucide-react";
+import { Menu, X, MessageSquare, LogOut, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 type NavProps = {
@@ -11,10 +11,11 @@ type NavProps = {
     username: string;
     avatar_url: string;
   } | null;
+  loading?: boolean;
   unreadMessages?: number;
 };
 
-export function Nav({ user, unreadMessages = 0 }: NavProps) {
+export function Nav({ user, loading = false, unreadMessages = 0 }: NavProps) {
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -79,7 +80,7 @@ export function Nav({ user, unreadMessages = 0 }: NavProps) {
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
-          {user ? (
+          {loading ? null : user ? (
             <>
               <Link
                 href={`/u/${user.username}`}
@@ -91,6 +92,13 @@ export function Nav({ user, unreadMessages = 0 }: NavProps) {
                   className="h-6 w-6 rounded-full"
                 />
                 <span>{user.username}</span>
+              </Link>
+              <Link
+                href="/settings"
+                className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-small text-text-muted transition-colors duration-150 hover:bg-bg-surface hover:text-text-primary"
+              >
+                <Settings size={14} />
+                Settings
               </Link>
               <button
                 type="button"
@@ -157,7 +165,7 @@ export function Nav({ user, unreadMessages = 0 }: NavProps) {
               </>
             )}
             <div className="my-2 border-t border-border-subtle" />
-            {user ? (
+            {loading ? null : user ? (
               <>
                 <Link
                   href={`/u/${user.username}`}
@@ -170,6 +178,14 @@ export function Nav({ user, unreadMessages = 0 }: NavProps) {
                     className="h-6 w-6 rounded-full"
                   />
                   <span>{user.username}</span>
+                </Link>
+                <Link
+                  href="/settings"
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-small text-text-muted transition-colors duration-150 hover:bg-bg-surface hover:text-text-primary"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <Settings size={14} />
+                  Settings
                 </Link>
                 <button
                   type="button"

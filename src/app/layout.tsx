@@ -21,7 +21,9 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen antialiased">
-        {children}
+        <div className="flex min-h-screen flex-col">
+          {children}
+        </div>
       </body>
     </html>
   );

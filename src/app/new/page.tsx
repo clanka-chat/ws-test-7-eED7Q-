@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/Button";
+import { useUser } from "@/components/useUser";
 
 const STAGE_OPTIONS = [
   { value: "idea", label: "Idea", desc: "Just a concept, looking for someone to build with" },
@@ -23,7 +24,9 @@ const TIME_OPTIONS = [
 
 export default function NewProjectPage() {
   const router = useRouter();
+  const { user, loading: userLoading } = useUser({ redirectTo: "/login" });
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -58,16 +61,36 @@ export default function NewProjectPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
+    setError(null);
 
-    // TODO: POST /api/projects — Agent 1 builds this endpoint
-    // For now, simulate and redirect
-    await new Promise((r) => setTimeout(r, 500));
-    router.push("/explore");
+    const res = await fetch("/api/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: title,
+        description,
+        stage,
+        tech_stack: techStack,
+        business_model: businessModel || null,
+        time_commitment: timeCommitment || null,
+        timezone: timezone || null,
+        is_public: true,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      router.push(`/project/${data.slug}`);
+    } else {
+      const err = await res.json().catch(() => ({ error: "Something went wrong" }));
+      setError(err.error ?? "Something went wrong");
+      setSubmitting(false);
+    }
   }
 
   return (
     <>
-      <Nav />
+      <Nav user={user} loading={userLoading} />
       <main className="mx-auto max-w-2xl px-4 py-10">
         <h1 className="text-h1 font-bold text-text-heading">Post your project</h1>
         <p className="mt-2 text-body text-text-secondary">
@@ -295,6 +318,10 @@ export default function NewProjectPage() {
               />
             </fieldset>
           </div>
+
+          {error && (
+            <p className="text-small text-status-error">{error}</p>
+          )}
 
           <div className="flex gap-3 pt-4">
             <Button type="submit" size="lg" disabled={submitting || !title || description.length < 50}>

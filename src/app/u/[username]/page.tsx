@@ -68,7 +68,7 @@ export default function ProfilePage({
   params: Promise<{ username: string }>;
 }) {
   const { username } = use(params);
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -90,7 +90,7 @@ export default function ProfilePage({
   if (loading) {
     return (
       <>
-        <Nav user={user} />
+        <Nav user={user} loading={userLoading} />
         <main className="mx-auto flex max-w-4xl items-center justify-center px-4 py-24">
           <Loader2 size={24} className="animate-spin text-text-muted" />
         </main>
@@ -102,7 +102,7 @@ export default function ProfilePage({
   if (notFound || !profile) {
     return (
       <>
-        <Nav user={user} />
+        <Nav user={user} loading={userLoading} />
         <main className="mx-auto flex max-w-2xl flex-col items-center px-4 py-24 text-center">
           <h1 className="text-h1 font-bold text-text-heading">User not found</h1>
           <p className="mt-2 text-body text-text-secondary">
@@ -118,7 +118,7 @@ export default function ProfilePage({
 
   return (
     <>
-      <Nav user={user} />
+      <Nav user={user} loading={userLoading} />
       <main className="mx-auto max-w-4xl px-4 py-10">
         <div className="flex flex-col items-start gap-6 sm:flex-row">
           <img
@@ -139,17 +139,17 @@ export default function ProfilePage({
             )}
 
             <div className="mt-4 flex flex-wrap gap-4 text-small text-text-muted">
-              {profile.roles.length > 0 && (
+              {(profile.roles?.length ?? 0) > 0 && (
                 <span className="flex items-center gap-1.5">
                   <Briefcase size={14} />
-                  {profile.roles.map((r) => roleLabels[r] ?? r).join(", ")}
+                  {(profile.roles ?? []).map((r) => roleLabels[r] ?? r).join(", ")}
                 </span>
               )}
             </div>
 
-            {profile.skills.length > 0 && (
+            {(profile.skills?.length ?? 0) > 0 && (
               <div className="mt-4 flex flex-wrap gap-1.5">
-                {profile.skills.map((skill) => (
+                {(profile.skills ?? []).map((skill) => (
                   <span
                     key={skill}
                     className="rounded-sm bg-bg-elevated px-2 py-0.5 font-mono text-caption text-text-muted"
