@@ -1,7 +1,7 @@
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { ProjectCard } from "@/components/ProjectCard";
-import { MapPin, Github, ExternalLink, CheckCircle } from "lucide-react";
+import { Briefcase, Github, ExternalLink, CheckCircle } from "lucide-react";
 import type { Profile, Project, ProjectRole } from "../../../../types/database";
 
 async function getProfile(username: string): Promise<{
@@ -150,7 +150,7 @@ export default async function ProfilePage({
               )}
               {profile.roles.length > 0 && (
                 <span className="flex items-center gap-1.5">
-                  <MapPin size={14} />
+                  <Briefcase size={14} />
                   {profile.roles.map((r) => roleLabels[r] ?? r).join(", ")}
                 </span>
               )}

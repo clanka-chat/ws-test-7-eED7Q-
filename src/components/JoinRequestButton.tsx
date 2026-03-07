@@ -11,6 +11,7 @@ type JoinRequestButtonProps = {
 };
 
 export function JoinRequestButton({
+  projectSlug,
   projectName,
   openRoles,
 }: JoinRequestButtonProps) {
@@ -23,7 +24,7 @@ export function JoinRequestButton({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setStatus("submitting");
-    // TODO: POST /api/projects/[slug]/join — Agent 1 builds this
+    // TODO: POST /api/projects/${projectSlug}/join — Agent 1 builds this
     await new Promise((r) => setTimeout(r, 500));
     setStatus("sent");
   }
