@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
@@ -22,12 +22,11 @@ const TARGET_LAUNCH_OPTIONS = [
   "No deadline",
 ] as const;
 
-const TIMEZONES = Intl.supportedValuesOf("timeZone");
-
 export default function NewProjectPage() {
   const router = useRouter();
   const { user, loading: userLoading, unreadMessages } = useUser({ redirectTo: "/login" });
   const [submitting, setSubmitting] = useState(false);
+  const [timezones, setTimezones] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
@@ -42,6 +41,10 @@ export default function NewProjectPage() {
   const [timezone, setTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   );
+
+  useEffect(() => {
+    setTimezones(Intl.supportedValuesOf("timeZone"));
+  }, []);
 
   function addTechStack() {
     const val = techStackInput.trim();
@@ -295,7 +298,7 @@ export default function NewProjectPage() {
                 onChange={(e) => setTimezone(e.target.value)}
                 className="h-10 w-full rounded-md border border-border-default bg-bg-input px-3 text-small text-text-primary focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-accent"
               >
-                {TIMEZONES.map((tz) => (
+                {timezones.map((tz) => (
                   <option key={tz} value={tz}>
                     {tz.replace(/_/g, " ")}
                   </option>

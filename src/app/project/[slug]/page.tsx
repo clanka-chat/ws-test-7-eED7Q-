@@ -214,6 +214,15 @@ export default function ProjectPage({
           </div>
         )}
 
+        {project.looking_for && (
+          <div className="mt-8">
+            <h2 className="text-h3 font-semibold text-text-heading">Looking for</h2>
+            <p className="mt-3 whitespace-pre-line text-body leading-relaxed text-text-secondary">
+              {project.looking_for}
+            </p>
+          </div>
+        )}
+
         {project.roadmap.length > 0 && (
           <div className="mt-8">
             <h2 className="text-h3 font-semibold text-text-heading">Roadmap</h2>
