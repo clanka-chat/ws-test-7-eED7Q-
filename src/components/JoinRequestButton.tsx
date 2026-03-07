@@ -8,12 +8,14 @@ type JoinRequestButtonProps = {
   projectSlug: string;
   projectName: string;
   openRoles: string[];
+  onSuccess?: () => void;
 };
 
 export function JoinRequestButton({
   projectSlug,
   projectName,
   openRoles,
+  onSuccess,
 }: JoinRequestButtonProps) {
   const [status, setStatus] = useState<"idle" | "form" | "submitting" | "sent">(
     "idle"
@@ -36,6 +38,7 @@ export function JoinRequestButton({
 
       if (res.ok) {
         setStatus("sent");
+        onSuccess?.();
       } else {
         const err = await res.json().catch(() => ({ error: "Something went wrong" }));
         setError(err.error ?? "Something went wrong");

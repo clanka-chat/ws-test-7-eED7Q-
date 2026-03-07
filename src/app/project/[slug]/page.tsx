@@ -62,6 +62,7 @@ export default function ProjectPage({
   const [notFound, setNotFound] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [joinStatus, setJoinStatus] = useState<"none" | "pending" | "accepted" | "rejected">("none");
 
   useEffect(() => {
     async function load() {
@@ -69,13 +70,21 @@ export default function ProjectPage({
       if (res.ok) {
         const data: ApiProject = await res.json();
         setProject(data);
+
+        if (userId && userId !== data.creator_id) {
+          const joinRes = await fetch(`/api/projects/${slug}/join`);
+          if (joinRes.ok) {
+            const joinData: { status: string } = await joinRes.json();
+            setJoinStatus(joinData.status as "pending" | "accepted" | "rejected");
+          }
+        }
       } else {
         setNotFound(true);
       }
       setLoading(false);
     }
     load();
-  }, [slug]);
+  }, [slug, userId]);
 
   async function handleDelete() {
     if (!window.confirm("Are you sure you want to delete this project? This cannot be undone.")) {
@@ -296,13 +305,26 @@ export default function ProjectPage({
 
         {user && userId && userId !== project.creator_id && (
           <div className="mt-10">
-            <JoinRequestButton
-              projectSlug={project.slug}
-              projectName={project.name}
-              openRoles={roles
-                .filter((r) => !r.filled)
-                .map((r) => r.role_title)}
-            />
+            {joinStatus === "none" && (
+              <JoinRequestButton
+                projectSlug={project.slug}
+                projectName={project.name}
+                openRoles={roles
+                  .filter((r) => !r.filled)
+                  .map((r) => r.role_title)}
+                onSuccess={() => setJoinStatus("pending")}
+              />
+            )}
+            {joinStatus === "pending" && (
+              <p className="rounded-md bg-status-info/15 px-4 py-3 text-small text-status-info">
+                Request pending — waiting for the creator to respond
+              </p>
+            )}
+            {joinStatus === "accepted" && (
+              <p className="rounded-md bg-status-success/15 px-4 py-3 text-small text-status-success">
+                You&apos;re a collaborator on this project
+              </p>
+            )}
           </div>
         )}
 
