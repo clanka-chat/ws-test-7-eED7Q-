@@ -3,6 +3,34 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 type RouteParams = { params: Promise<{ slug: string }> }
 
+export async function GET(_request: NextRequest, { params }: RouteParams) {
+  const { slug } = await params
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { data: project } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('slug', slug)
+    .single()
+
+  if (!project) {
+    return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+  }
+
+  const { data: joinRequest } = await supabase
+    .from('join_requests')
+    .select('status')
+    .eq('project_id', project.id)
+    .eq('requester_id', user.id)
+    .single()
+
+  return NextResponse.json({ status: joinRequest?.status ?? 'none' })
+}
+
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const { slug } = await params
   const supabase = await createClient()
