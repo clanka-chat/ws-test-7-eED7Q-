@@ -1,56 +1,26 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Loader2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
-type Conversation = {
-  id: string;
-  otherUser: {
+type ApiConversation = {
+  conversation_id: string;
+  latest_message: {
+    content: string;
+    created_at: string;
+  };
+  other_user: {
     username: string;
     display_name: string | null;
-    avatar_url: string;
+    avatar_url: string | null;
   };
-  lastMessage: string;
-  lastMessageAt: string;
-  unreadCount: number;
+  unread_count: number;
 };
-
-const MOCK_USER = {
-  username: "spaghettipete",
-  avatar_url:
-    "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=spaghettipete",
-};
-
-const MOCK_CONVERSATIONS: Conversation[] = [
-  {
-    id: "conv-1",
-    otherUser: {
-      username: "reactrachel",
-      display_name: "Rachel",
-      avatar_url:
-        "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=reactrachel",
-    },
-    lastMessage:
-      "Hey! I saw the Frontend Dev role on clanka.chat — I have 3 years of React/Next.js experience and would love to help out.",
-    lastMessageAt: "2026-03-07T10:30:00Z",
-    unreadCount: 2,
-  },
-  {
-    id: "conv-2",
-    otherUser: {
-      username: "growthguru",
-      display_name: "Marcus",
-      avatar_url:
-        "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=growthguru",
-    },
-    lastMessage:
-      "Sounds good, let me know when you want to hop on a call to discuss the launch strategy.",
-    lastMessageAt: "2026-03-06T18:15:00Z",
-    unreadCount: 0,
-  },
-];
 
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -68,56 +38,125 @@ function formatTime(dateStr: string): string {
 }
 
 export default function MessagesPage() {
+  const router = useRouter();
+  const [conversations, setConversations] = useState<ApiConversation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<{
+    username: string;
+    avatar_url: string;
+  } | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      const supabase = createClient();
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
+
+      if (!authUser) {
+        router.push("/login");
+        return;
+      }
+
+      // Get profile for Nav
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("username, avatar_url")
+        .eq("id", authUser.id)
+        .single();
+
+      if (profile) {
+        setUser({
+          username: profile.username,
+          avatar_url:
+            profile.avatar_url ??
+            `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${profile.username}`,
+        });
+      }
+
+      // Fetch conversations
+      const res = await fetch("/api/messages");
+      if (res.ok) {
+        const data: ApiConversation[] = await res.json();
+        setConversations(data);
+      }
+
+      setLoading(false);
+    }
+    load();
+  }, [router]);
+
+  const totalUnread = conversations.reduce(
+    (sum, c) => sum + c.unread_count,
+    0
+  );
+
+  if (loading) {
+    return (
+      <>
+        <Nav user={user} />
+        <main className="mx-auto flex max-w-2xl items-center justify-center px-4 py-24">
+          <Loader2 size={24} className="animate-spin text-text-muted" />
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
   return (
     <>
-      <Nav user={MOCK_USER} unreadMessages={2} />
+      <Nav user={user} unreadMessages={totalUnread} />
       <main className="mx-auto max-w-2xl px-4 py-10">
         <h1 className="text-h1 font-bold text-text-heading">Messages</h1>
         <p className="mt-1 text-body text-text-secondary">
           Private conversations with collaborators.
         </p>
 
-        {MOCK_CONVERSATIONS.length > 0 ? (
+        {conversations.length > 0 ? (
           <div className="mt-6 divide-y divide-border-subtle rounded-lg border border-border-default">
-            {MOCK_CONVERSATIONS.map((conv) => (
+            {conversations.map((conv) => (
               <Link
-                key={conv.id}
-                href={`/messages/${conv.id}`}
+                key={conv.conversation_id}
+                href={`/messages/${conv.conversation_id}`}
                 className="flex items-center gap-4 px-4 py-4 transition-colors duration-150 hover:bg-bg-surface"
               >
                 <img
-                  src={conv.otherUser.avatar_url}
-                  alt={conv.otherUser.username}
+                  src={
+                    conv.other_user.avatar_url ??
+                    `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${conv.other_user.username}`
+                  }
+                  alt={conv.other_user.username}
                   className="h-10 w-10 shrink-0 rounded-full border border-border-default bg-bg-elevated"
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <span
                       className={`truncate text-small font-medium ${
-                        conv.unreadCount > 0
+                        conv.unread_count > 0
                           ? "text-text-heading"
                           : "text-text-secondary"
                       }`}
                     >
-                      {conv.otherUser.display_name ?? conv.otherUser.username}
+                      {conv.other_user.display_name ??
+                        conv.other_user.username}
                     </span>
                     <span className="shrink-0 text-caption text-text-muted">
-                      {formatTime(conv.lastMessageAt)}
+                      {formatTime(conv.latest_message.created_at)}
                     </span>
                   </div>
                   <div className="mt-0.5 flex items-center gap-2">
                     <p
                       className={`truncate text-small ${
-                        conv.unreadCount > 0
+                        conv.unread_count > 0
                           ? "text-text-primary"
                           : "text-text-muted"
                       }`}
                     >
-                      {conv.lastMessage}
+                      {conv.latest_message.content}
                     </p>
-                    {conv.unreadCount > 0 && (
+                    {conv.unread_count > 0 && (
                       <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-caption font-bold text-bg-base">
-                        {conv.unreadCount}
+                        {conv.unread_count}
                       </span>
                     )}
                   </div>
@@ -127,10 +166,7 @@ export default function MessagesPage() {
           </div>
         ) : (
           <div className="mt-6 rounded-lg border border-border-subtle bg-bg-surface p-12 text-center">
-            <MessageSquare
-              size={32}
-              className="mx-auto text-text-muted"
-            />
+            <MessageSquare size={32} className="mx-auto text-text-muted" />
             <p className="mt-3 text-body text-text-secondary">
               No messages yet.
             </p>
