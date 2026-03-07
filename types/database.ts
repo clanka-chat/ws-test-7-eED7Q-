@@ -39,6 +39,9 @@ export type Project = {
   vercel_project_id: string | null
   vercel_deploy_hook_url: string | null
   live_url: string | null
+  target_launch: string | null
+  roadmap: string[]
+  tags: string[]
   created_at: string
   updated_at: string
 }

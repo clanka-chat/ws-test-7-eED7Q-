@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { name, description, stage, tech_stack, business_model, domain_plan, time_commitment, timezone, is_public } = body
+  const { name, description, stage, tech_stack, business_model, domain_plan, time_commitment, timezone, is_public, target_launch, roadmap, tags } = body
 
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return NextResponse.json({ error: 'Name is required' }, { status: 400 })
@@ -76,6 +76,9 @@ export async function POST(request: NextRequest) {
       time_commitment: time_commitment ?? null,
       timezone: timezone ?? null,
       is_public: is_public ?? true,
+      target_launch: target_launch ?? null,
+      roadmap: roadmap ?? [],
+      tags: tags ?? [],
     })
     .select()
     .single()

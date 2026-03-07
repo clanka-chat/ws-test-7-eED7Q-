@@ -46,6 +46,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const allowedFields = [
     'name', 'description', 'stage', 'tech_stack', 'business_model',
     'domain_plan', 'time_commitment', 'timezone', 'is_public',
+    'target_launch', 'roadmap', 'tags',
   ] as const
 
   const updates: Record<string, string | string[] | boolean | null> = {}
