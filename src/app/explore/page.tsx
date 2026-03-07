@@ -197,10 +197,10 @@ export default function ExplorePage() {
                 key={stage}
                 type="button"
                 onClick={() => setStageFilter(stage)}
-                className={`cursor-pointer whitespace-nowrap rounded-md px-3 py-1.5 text-caption font-medium transition-colors duration-150 ${
+                className={`cursor-pointer whitespace-nowrap rounded-md border px-3 py-1.5 text-caption font-medium transition-colors duration-150 ${
                   stageFilter === stage
-                    ? "bg-accent text-bg-base"
-                    : "border border-border-default text-text-secondary hover:text-text-primary"
+                    ? "border-accent bg-accent text-bg-base"
+                    : "border-border-default text-text-secondary hover:text-text-primary"
                 }`}
               >
                 {stage === "all"

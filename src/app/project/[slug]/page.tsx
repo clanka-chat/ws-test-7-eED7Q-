@@ -1,10 +1,9 @@
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
-import { Button } from "@/components/Button";
+import { JoinRequestButton } from "@/components/JoinRequestButton";
 import {
   Clock,
   Globe,
-  Users,
   ExternalLink,
   MapPin,
 } from "lucide-react";
@@ -236,11 +235,14 @@ export default async function ProjectPage({
         </div>
 
         {roles.some((r) => !r.filled) && (
-          <div className="mt-10 flex gap-3">
-            <Button size="lg">
-              <Users size={18} />
-              Request to Join
-            </Button>
+          <div className="mt-10">
+            <JoinRequestButton
+              projectSlug={project.slug}
+              projectName={project.name}
+              openRoles={roles
+                .filter((r) => !r.filled)
+                .map((r) => r.role_title)}
+            />
           </div>
         )}
       </main>
