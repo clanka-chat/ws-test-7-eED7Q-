@@ -20,7 +20,7 @@ const TARGET_LAUNCH_OPTIONS = [
   "2 months",
   "3+ months",
   "No deadline",
-];
+] as const;
 
 const TIMEZONES = Intl.supportedValuesOf("timeZone");
 
@@ -78,10 +78,10 @@ export default function NewProjectPage() {
     });
 
     if (res.ok) {
-      const data = await res.json();
+      const data: { slug: string } = await res.json();
       router.push(`/project/${data.slug}`);
     } else {
-      const err = await res.json().catch(() => ({ error: "Something went wrong" }));
+      const err: { error?: string } = await res.json().catch(() => ({ error: "Something went wrong" }));
       setError(err.error ?? "Something went wrong");
       setSubmitting(false);
     }
