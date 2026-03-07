@@ -59,6 +59,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       })
 
     if (collabError) return NextResponse.json({ error: collabError.message }, { status: 500 })
+
+    // Hide listing from explore — MVP assumes one co-builder per project
+    await supabase
+      .from('projects')
+      .update({ is_public: false, updated_at: new Date().toISOString() })
+      .eq('id', project.id)
   }
 
   return NextResponse.json(data)
