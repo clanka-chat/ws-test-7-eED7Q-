@@ -14,13 +14,15 @@ const STAGE_OPTIONS = [
   { value: "launched", label: "Launched", desc: "Live product, looking for help growing or maintaining" },
 ];
 
-const TIME_OPTIONS = [
-  "< 5 hrs/week",
-  "5-10 hrs/week",
-  "10-15 hrs/week",
-  "15-20 hrs/week",
-  "20+ hrs/week",
+const TARGET_LAUNCH_OPTIONS = [
+  "Within a week",
+  "Within a month",
+  "2 months",
+  "3+ months",
+  "No deadline",
 ];
+
+const TIMEZONES = Intl.supportedValuesOf("timeZone");
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -34,10 +36,9 @@ export default function NewProjectPage() {
   const [stage, setStage] = useState("idea");
   const [techStackInput, setTechStackInput] = useState("");
   const [techStack, setTechStack] = useState<string[]>([]);
-  const [tagsInput, setTagsInput] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
   const [businessModel, setBusinessModel] = useState("");
-  const [timeCommitment, setTimeCommitment] = useState("");
+  const [roadmap, setRoadmap] = useState<string[]>(["", "", ""]);
+  const [targetLaunch, setTargetLaunch] = useState("");
   const [timezone, setTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   );
@@ -50,12 +51,8 @@ export default function NewProjectPage() {
     }
   }
 
-  function addTag() {
-    const val = tagsInput.trim().toLowerCase();
-    if (val && !tags.includes(val) && tags.length < 5) {
-      setTags([...tags, val]);
-      setTagsInput("");
-    }
+  function updateRoadmap(index: number, value: string) {
+    setRoadmap((prev) => prev.map((g, i) => (i === index ? value : g)));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -73,7 +70,8 @@ export default function NewProjectPage() {
         stage,
         tech_stack: techStack,
         business_model: businessModel || null,
-        time_commitment: timeCommitment || null,
+        target_launch: targetLaunch || null,
+        roadmap: roadmap.filter((g) => g.trim()),
         timezone: timezone || null,
         is_public: true,
       }),
@@ -221,58 +219,6 @@ export default function NewProjectPage() {
           </fieldset>
 
           <fieldset className="space-y-1.5">
-            <label htmlFor="tags" className="text-small font-medium text-text-heading">
-              Tags <span className="text-text-muted">(up to 5)</span>
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="tags"
-                type="text"
-                value={tagsInput}
-                onChange={(e) => setTagsInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addTag();
-                  }
-                }}
-                placeholder="e.g. ai, saas, mobile"
-                disabled={tags.length >= 5}
-                className="h-10 flex-1 rounded-md border border-border-default bg-bg-input px-3 text-small text-text-primary placeholder:text-text-muted focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                onClick={addTag}
-                disabled={tags.length >= 5}
-              >
-                Add
-              </Button>
-            </div>
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {tags.map((t) => (
-                  <span
-                    key={t}
-                    className="inline-flex items-center gap-1 rounded-sm bg-accent-muted px-2 py-0.5 text-caption text-accent"
-                  >
-                    {t}
-                    <button
-                      type="button"
-                      onClick={() => setTags(tags.filter((x) => x !== t))}
-                      className="cursor-pointer text-accent/60 hover:text-accent"
-                      aria-label={`Remove ${t}`}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </fieldset>
-
-          <fieldset className="space-y-1.5">
             <label htmlFor="business-model" className="text-small font-medium text-text-heading">
               Business model <span className="text-text-muted">(optional)</span>
             </label>
@@ -286,19 +232,52 @@ export default function NewProjectPage() {
             />
           </fieldset>
 
+          <fieldset className="space-y-1.5">
+            <label className="text-small font-medium text-text-heading">
+              Roadmap — what&apos;s the plan?
+            </label>
+            <p className="text-caption text-text-muted">
+              Add 1-3 milestone goals. At least one is required.
+            </p>
+            <div className="space-y-2">
+              <input
+                type="text"
+                required
+                value={roadmap[0]}
+                onChange={(e) => updateRoadmap(0, e.target.value)}
+                placeholder="e.g. Build auth + onboarding flow"
+                className="h-10 w-full rounded-md border border-border-default bg-bg-input px-3 text-small text-text-primary placeholder:text-text-muted focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+              <input
+                type="text"
+                value={roadmap[1]}
+                onChange={(e) => updateRoadmap(1, e.target.value)}
+                placeholder="e.g. Launch beta to 50 users"
+                className="h-10 w-full rounded-md border border-border-default bg-bg-input px-3 text-small text-text-primary placeholder:text-text-muted focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+              <input
+                type="text"
+                value={roadmap[2]}
+                onChange={(e) => updateRoadmap(2, e.target.value)}
+                placeholder="e.g. Add payment integration"
+                className="h-10 w-full rounded-md border border-border-default bg-bg-input px-3 text-small text-text-primary placeholder:text-text-muted focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+            </div>
+          </fieldset>
+
           <div className="grid gap-6 sm:grid-cols-2">
             <fieldset className="space-y-1.5">
-              <label htmlFor="time-commitment" className="text-small font-medium text-text-heading">
-                Time commitment
+              <label htmlFor="target-launch" className="text-small font-medium text-text-heading">
+                Target launch
               </label>
               <select
-                id="time-commitment"
-                value={timeCommitment}
-                onChange={(e) => setTimeCommitment(e.target.value)}
+                id="target-launch"
+                value={targetLaunch}
+                onChange={(e) => setTargetLaunch(e.target.value)}
                 className="h-10 w-full rounded-md border border-border-default bg-bg-input px-3 text-small text-text-primary focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-accent"
               >
                 <option value="">Select...</option>
-                {TIME_OPTIONS.map((opt) => (
+                {TARGET_LAUNCH_OPTIONS.map((opt) => (
                   <option key={opt} value={opt}>
                     {opt}
                   </option>
@@ -310,13 +289,18 @@ export default function NewProjectPage() {
               <label htmlFor="timezone" className="text-small font-medium text-text-heading">
                 Timezone
               </label>
-              <input
+              <select
                 id="timezone"
-                type="text"
                 value={timezone}
                 onChange={(e) => setTimezone(e.target.value)}
                 className="h-10 w-full rounded-md border border-border-default bg-bg-input px-3 text-small text-text-primary focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-accent"
-              />
+              >
+                {TIMEZONES.map((tz) => (
+                  <option key={tz} value={tz}>
+                    {tz.replace(/_/g, " ")}
+                  </option>
+                ))}
+              </select>
             </fieldset>
           </div>
 
