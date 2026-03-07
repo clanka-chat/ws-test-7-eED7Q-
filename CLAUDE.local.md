@@ -28,14 +28,16 @@ For each phase in hackathon-plan.md:
 
 ## How to Handle Backend Dependencies
 When you need to import from `lib/supabase.ts` or `types/database.ts` and they don't exist yet:
-1. Create a placeholder in `types/placeholders.ts`:
-   ```typescript
-   // Placeholder — Agent 1 will create the real version
-   export type Profile = { id: string; username: string; avatar_url: string };
-   export type Project = { id: string; title: string; slug: string; };
-   ```
+1. Create a placeholder **type** in `types/placeholders.ts` — types ONLY, not fake data
 2. Import from the placeholder
 3. After the human merges Agent 1's branch, switch to real imports
+
+## NEVER Use Mock/Fake Data in Pages
+- **Do NOT create MOCK_USER, MOCK_PROJECTS, or any hardcoded fake data in page components.**
+- Every page must get real data from Supabase auth and real API routes.
+- If an API doesn't exist yet, show an empty state or loading state — NOT fake data.
+- The ONLY things that are mocked are Stripe features (see hackathon-plan.md "What's Mocked vs Real").
+- Placeholder types are OK. Placeholder data is NOT OK.
 
 ## Design Rules (from design-discovery.md)
 - Read the full design-discovery.md for tokens, but key reminders:

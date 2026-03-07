@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "@fontsource-variable/jetbrains-mono";
+@import "@fontsource-variable/jetbrains-mono/index.css";
 
 @theme inline {
   --color-bg-base: #0A0A0B;
