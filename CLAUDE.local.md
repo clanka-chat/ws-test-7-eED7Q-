@@ -21,8 +21,10 @@ You are Agent 2 (Frontend). Another agent (Agent 1) is building backend logic, d
 ## Your Phase Responsibilities
 For each phase in hackathon-plan.md:
 - Build: UI components, page layouts, styling, design tokens, loading states, empty states
+- Build: ALL pages including auth pages (login, signup) — you own every `page.tsx`
 - Skip: database tables, RLS policies, API routes, auth middleware
 - Always read `design-discovery.md` before building any UI
+- **IMPORTANT:** After building, grep for every `href` in your components and verify each linked route has a corresponding `page.tsx`. Missing pages = 404s.
 
 ## How to Handle Backend Dependencies
 When you need to import from `lib/supabase.ts` or `types/database.ts` and they don't exist yet:
