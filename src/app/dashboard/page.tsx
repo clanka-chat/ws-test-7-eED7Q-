@@ -69,7 +69,7 @@ type DashboardData = {
 };
 
 export default function DashboardPage() {
-  const { user, loading: userLoading } = useUser({ redirectTo: "/login" });
+  const { user, loading: userLoading, unreadMessages } = useUser({ redirectTo: "/login" });
   const [activeTab, setActiveTab] = useState<"projects" | "requests">("projects");
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -91,7 +91,7 @@ export default function DashboardPage() {
   if (userLoading || loading) {
     return (
       <>
-        <Nav user={user} loading={userLoading} />
+        <Nav user={user} loading={userLoading} unreadMessages={unreadMessages} />
         <main className="mx-auto flex max-w-6xl items-center justify-center px-4 py-24">
           <Loader2 size={24} className="animate-spin text-text-muted" />
         </main>
@@ -109,7 +109,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Nav user={user} loading={userLoading} />
+      <Nav user={user} loading={userLoading} unreadMessages={unreadMessages} />
       <main className="mx-auto max-w-6xl px-4 py-10">
         <div className="flex items-center justify-between">
           <div>

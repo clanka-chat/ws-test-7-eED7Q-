@@ -30,7 +30,7 @@ const SECTIONS: { id: SettingsSection; label: string; icon: React.ReactNode }[] 
 ];
 
 export default function SettingsPage() {
-  const { user, loading: userLoading } = useUser({ redirectTo: "/login" });
+  const { user, loading: userLoading, unreadMessages } = useUser({ redirectTo: "/login" });
   const [section, setSection] = useState<SettingsSection>("profile");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -129,7 +129,7 @@ export default function SettingsPage() {
   if (userLoading || loading) {
     return (
       <>
-        <Nav user={user} loading={userLoading} />
+        <Nav user={user} loading={userLoading} unreadMessages={unreadMessages} />
         <main className="mx-auto flex max-w-4xl items-center justify-center px-4 py-24">
           <Loader2 size={24} className="animate-spin text-text-muted" />
         </main>
@@ -140,7 +140,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <Nav user={user} loading={userLoading} />
+      <Nav user={user} loading={userLoading} unreadMessages={unreadMessages} />
       <main className="mx-auto max-w-4xl px-4 py-10">
         <h1 className="text-h1 font-bold text-text-heading">Settings</h1>
         <p className="mt-1 text-body text-text-secondary">

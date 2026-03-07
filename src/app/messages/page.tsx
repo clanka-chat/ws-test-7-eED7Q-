@@ -37,7 +37,7 @@ function formatTime(dateStr: string): string {
 }
 
 export default function MessagesPage() {
-  const { user, loading: userLoading } = useUser({ redirectTo: "/login" });
+  const { user, loading: userLoading, unreadMessages } = useUser({ redirectTo: "/login" });
   const [conversations, setConversations] = useState<ApiConversation[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -55,15 +55,10 @@ export default function MessagesPage() {
     }
   }, [userLoading, user]);
 
-  const totalUnread = conversations.reduce(
-    (sum, c) => sum + c.unread_count,
-    0
-  );
-
   if (userLoading || loading) {
     return (
       <>
-        <Nav user={user} loading={userLoading} />
+        <Nav user={user} loading={userLoading} unreadMessages={unreadMessages} />
         <main className="mx-auto flex max-w-2xl items-center justify-center px-4 py-24">
           <Loader2 size={24} className="animate-spin text-text-muted" />
         </main>
@@ -74,7 +69,7 @@ export default function MessagesPage() {
 
   return (
     <>
-      <Nav user={user} loading={userLoading} unreadMessages={totalUnread} />
+      <Nav user={user} loading={userLoading} unreadMessages={unreadMessages} />
       <main className="mx-auto max-w-2xl px-4 py-10">
         <h1 className="text-h1 font-bold text-text-heading">Messages</h1>
         <p className="mt-1 text-body text-text-secondary">

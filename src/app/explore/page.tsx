@@ -20,7 +20,7 @@ type ApiProject = Project & {
 };
 
 export default function ExplorePage() {
-  const { user, loading: userLoading } = useUser();
+  const { user, loading: userLoading, unreadMessages } = useUser();
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("all");
   const [projects, setProjects] = useState<ApiProject[]>([]);
@@ -44,7 +44,7 @@ export default function ExplorePage() {
 
   return (
     <>
-      <Nav user={user} loading={userLoading} />
+      <Nav user={user} loading={userLoading} unreadMessages={unreadMessages} />
       <main className="mx-auto max-w-6xl px-4 py-10">
         <h1 className="text-h1 font-bold text-text-heading">Explore projects</h1>
         <p className="mt-2 text-body text-text-secondary">

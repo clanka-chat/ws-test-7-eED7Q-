@@ -68,7 +68,7 @@ export default function ProfilePage({
   params: Promise<{ username: string }>;
 }) {
   const { username } = use(params);
-  const { user, loading: userLoading } = useUser();
+  const { user, loading: userLoading, unreadMessages } = useUser();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -90,7 +90,7 @@ export default function ProfilePage({
   if (loading) {
     return (
       <>
-        <Nav user={user} loading={userLoading} />
+        <Nav user={user} loading={userLoading} unreadMessages={unreadMessages} />
         <main className="mx-auto flex max-w-4xl items-center justify-center px-4 py-24">
           <Loader2 size={24} className="animate-spin text-text-muted" />
         </main>
@@ -102,7 +102,7 @@ export default function ProfilePage({
   if (notFound || !profile) {
     return (
       <>
-        <Nav user={user} loading={userLoading} />
+        <Nav user={user} loading={userLoading} unreadMessages={unreadMessages} />
         <main className="mx-auto flex max-w-2xl flex-col items-center px-4 py-24 text-center">
           <h1 className="text-h1 font-bold text-text-heading">User not found</h1>
           <p className="mt-2 text-body text-text-secondary">
@@ -118,7 +118,7 @@ export default function ProfilePage({
 
   return (
     <>
-      <Nav user={user} loading={userLoading} />
+      <Nav user={user} loading={userLoading} unreadMessages={unreadMessages} />
       <main className="mx-auto max-w-4xl px-4 py-10">
         <div className="flex flex-col items-start gap-6 sm:flex-row">
           <img
