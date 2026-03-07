@@ -19,7 +19,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
   // Fetch user's public projects
   let projects = null
-  if (profile.privacy_projects) {
+  if (!profile.privacy_projects) {
     const { data } = await supabase
       .from('projects')
       .select('id, slug, name, description, stage, tech_stack, created_at, project_roles(*)')

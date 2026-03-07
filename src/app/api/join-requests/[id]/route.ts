@@ -46,5 +46,20 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  if (status === 'accepted') {
+    const { error: collabError } = await supabase
+      .from('collaborators')
+      .insert({
+        project_id: project.id,
+        user_id: joinRequest.requester_id,
+        role: 'member',
+        revenue_split: 0,
+        status: 'active',
+      })
+
+    if (collabError) return NextResponse.json({ error: collabError.message }, { status: 500 })
+  }
+
   return NextResponse.json(data)
 }
