@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/Button";
-import { ProjectCard } from "@/components/ProjectCard";
+import { useUser } from "@/components/useUser";
 import {
   Plus,
   Clock,
@@ -14,88 +14,101 @@ import {
   Bell,
   CheckCircle,
   XCircle,
+  Loader2,
 } from "lucide-react";
-import type { Project, ProjectRole, JoinRequest } from "../../../types/database";
 
-type DashboardProject = Project & {
-  roles: ProjectRole[];
-  creatorName: string;
-  myRole: string;
+type DashboardProjectRole = {
+  id: string;
+  role_title: string;
+  filled: boolean;
 };
 
-type PendingRequest = JoinRequest & {
-  projectName: string;
-  projectSlug: string;
-  requesterName?: string;
+type DashboardProject = {
+  id: string;
+  slug: string;
+  name: string;
+  stage: string;
+  created_at: string;
+  project_roles: DashboardProjectRole[];
 };
 
-const MOCK_USER = {
-  username: "spaghettipete",
-  avatar_url: "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=spaghettipete",
+type DashboardCollaboration = {
+  role: string;
+  revenue_split: number;
+  projects: {
+    id: string;
+    slug: string;
+    name: string;
+    stage: string;
+  };
 };
 
-const MOCK_PROJECTS: DashboardProject[] = [
-  {
-    id: "1",
-    slug: "clanka-chat-k8m2x4",
-    creator_id: "u1",
-    name: "clanka.chat",
-    description:
-      "The platform where vibecoders find co-builders, form micro-startups, and split revenue.",
-    stage: "building",
-    tech_stack: ["Next.js", "Supabase", "Stripe", "Vercel"],
-    business_model: "Platform fee (5%)",
-    domain_plan: null,
-    time_commitment: "20+ hrs/week",
-    timezone: "UTC-5",
-    is_public: true,
-    github_repo_name: null,
-    github_repo_full_name: null,
-    github_repo_url: null,
-    vercel_project_id: null,
-    vercel_deploy_hook_url: null,
-    live_url: null,
-    created_at: "2026-03-01T00:00:00Z",
-    updated_at: "2026-03-06T00:00:00Z",
-    roles: [
-      { id: "r1", project_id: "1", role_title: "Creator", role_type: "code", description: null, revenue_split: 50, filled: true, filled_by: "u1", created_at: "2026-03-01T00:00:00Z" },
-      { id: "r2", project_id: "1", role_title: "Frontend", role_type: "code", description: null, revenue_split: 30, filled: false, filled_by: null, created_at: "2026-03-01T00:00:00Z" },
-      { id: "r3", project_id: "1", role_title: "Growth", role_type: "marketing", description: null, revenue_split: 20, filled: false, filled_by: null, created_at: "2026-03-01T00:00:00Z" },
-    ],
-    creatorName: "spaghettipete",
-    myRole: "Creator",
-  },
-];
+type PendingRequest = {
+  id: string;
+  status: string;
+  message: string | null;
+  created_at: string;
+  projects: { slug: string; name: string };
+  profiles: { username: string; display_name: string | null; avatar_url: string | null };
+};
 
-const MOCK_INCOMING_REQUESTS: PendingRequest[] = [
-  {
-    id: "jr1",
-    project_id: "1",
-    requester_id: "u7",
-    status: "pending",
-    message: "I'd love to help with the frontend! I have 3 years of React/Next.js experience.",
-    created_at: "2026-03-06T14:00:00Z",
-    updated_at: "2026-03-06T14:00:00Z",
-    projectName: "clanka.chat",
-    projectSlug: "clanka-chat-k8m2x4",
-    requesterName: "reactrachel",
-  },
-];
+type OutgoingRequest = {
+  id: string;
+  status: string;
+  message: string | null;
+  created_at: string;
+  projects: { slug: string; name: string };
+};
 
-const MOCK_OUTGOING_REQUESTS: PendingRequest[] = [];
-
-const MOCK_EARNINGS = {
-  totalEarned: 0,
-  thisMonth: 0,
-  pendingPayout: 0,
+type DashboardData = {
+  my_projects: DashboardProject[];
+  collaborations: DashboardCollaboration[];
+  pending_requests: PendingRequest[];
+  my_requests: OutgoingRequest[];
+  earnings: { total: number; this_month: number; currency: string };
 };
 
 export default function DashboardPage() {
+  const { user, loading: userLoading } = useUser({ redirectTo: "/login" });
   const [activeTab, setActiveTab] = useState<"projects" | "requests">("projects");
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      const res = await fetch("/api/dashboard");
+      if (res.ok) {
+        const json: DashboardData = await res.json();
+        setData(json);
+      }
+      setLoading(false);
+    }
+    if (!userLoading && user) {
+      load();
+    }
+  }, [userLoading, user]);
+
+  if (userLoading || loading) {
+    return (
+      <>
+        <Nav user={user} />
+        <main className="mx-auto flex max-w-6xl items-center justify-center px-4 py-24">
+          <Loader2 size={24} className="animate-spin text-text-muted" />
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  const myProjects = data?.my_projects ?? [];
+  const collaborations = data?.collaborations ?? [];
+  const pendingRequests = data?.pending_requests ?? [];
+  const myRequests = data?.my_requests ?? [];
+  const earnings = data?.earnings ?? { total: 0, this_month: 0, currency: "USD" };
 
   return (
     <>
-      <Nav user={MOCK_USER} />
+      <Nav user={user} />
       <main className="mx-auto max-w-6xl px-4 py-10">
         <div className="flex items-center justify-between">
           <div>
@@ -119,7 +132,7 @@ export default function DashboardPage() {
               <span className="text-caption font-medium">Total Earned</span>
             </div>
             <p className="mt-2 font-mono text-h2 font-bold text-text-heading">
-              ${MOCK_EARNINGS.totalEarned.toFixed(2)}
+              ${earnings.total.toFixed(2)}
             </p>
           </div>
           <div className="rounded-lg border border-border-subtle bg-bg-surface p-4">
@@ -128,16 +141,16 @@ export default function DashboardPage() {
               <span className="text-caption font-medium">This Month</span>
             </div>
             <p className="mt-2 font-mono text-h2 font-bold text-text-heading">
-              ${MOCK_EARNINGS.thisMonth.toFixed(2)}
+              ${earnings.this_month.toFixed(2)}
             </p>
           </div>
           <div className="rounded-lg border border-border-subtle bg-bg-surface p-4">
             <div className="flex items-center gap-2 text-text-muted">
               <Clock size={16} />
-              <span className="text-caption font-medium">Pending Payout</span>
+              <span className="text-caption font-medium">Active Projects</span>
             </div>
             <p className="mt-2 font-mono text-h2 font-bold text-text-heading">
-              ${MOCK_EARNINGS.pendingPayout.toFixed(2)}
+              {myProjects.length + collaborations.length}
             </p>
           </div>
         </div>
@@ -152,7 +165,7 @@ export default function DashboardPage() {
                 : "border-transparent text-text-muted hover:text-text-primary"
             }`}
           >
-            Active Projects ({MOCK_PROJECTS.length})
+            Projects ({myProjects.length + collaborations.length})
           </button>
           <button
             type="button"
@@ -164,9 +177,9 @@ export default function DashboardPage() {
             }`}
           >
             Requests
-            {MOCK_INCOMING_REQUESTS.length > 0 && (
+            {pendingRequests.length > 0 && (
               <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-accent text-caption font-bold text-bg-base">
-                {MOCK_INCOMING_REQUESTS.length}
+                {pendingRequests.length}
               </span>
             )}
           </button>
@@ -174,15 +187,41 @@ export default function DashboardPage() {
 
         {activeTab === "projects" && (
           <div className="mt-6">
-            {MOCK_PROJECTS.length > 0 ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {MOCK_PROJECTS.map((p) => (
-                  <ProjectCard
+            {myProjects.length + collaborations.length > 0 ? (
+              <div className="space-y-3">
+                {myProjects.map((p) => (
+                  <Link
                     key={p.id}
-                    project={p}
-                    roles={p.roles}
-                    creatorName={p.creatorName}
-                  />
+                    href={`/project/${p.slug}`}
+                    className="flex items-center justify-between rounded-lg border border-border-default bg-bg-surface p-4 transition-colors duration-150 hover:border-border-strong"
+                  >
+                    <div>
+                      <p className="text-small font-medium text-text-heading">{p.name}</p>
+                      <p className="mt-0.5 text-caption text-text-muted">
+                        Creator &middot; {p.project_roles.filter((r) => r.filled).length}/{p.project_roles.length} roles filled
+                      </p>
+                    </div>
+                    <span className="rounded-sm bg-bg-elevated px-2 py-0.5 font-mono text-caption text-text-muted">
+                      {p.stage}
+                    </span>
+                  </Link>
+                ))}
+                {collaborations.map((c) => (
+                  <Link
+                    key={c.projects.id}
+                    href={`/project/${c.projects.slug}`}
+                    className="flex items-center justify-between rounded-lg border border-border-default bg-bg-surface p-4 transition-colors duration-150 hover:border-border-strong"
+                  >
+                    <div>
+                      <p className="text-small font-medium text-text-heading">{c.projects.name}</p>
+                      <p className="mt-0.5 text-caption text-text-muted">
+                        {c.role} &middot; {c.revenue_split}% split
+                      </p>
+                    </div>
+                    <span className="rounded-sm bg-bg-elevated px-2 py-0.5 font-mono text-caption text-text-muted">
+                      {c.projects.stage}
+                    </span>
+                  </Link>
                 ))}
               </div>
             ) : (
@@ -214,9 +253,9 @@ export default function DashboardPage() {
               <h3 className="text-small font-medium text-text-heading">
                 Incoming Requests
               </h3>
-              {MOCK_INCOMING_REQUESTS.length > 0 ? (
+              {pendingRequests.length > 0 ? (
                 <div className="mt-3 space-y-3">
-                  {MOCK_INCOMING_REQUESTS.map((req) => (
+                  {pendingRequests.map((req) => (
                     <div
                       key={req.id}
                       className="rounded-lg border border-border-default bg-bg-surface p-4"
@@ -225,14 +264,14 @@ export default function DashboardPage() {
                         <div>
                           <p className="text-small text-text-heading">
                             <span className="font-medium text-accent">
-                              {req.requesterName}
+                              {req.profiles.display_name ?? req.profiles.username}
                             </span>{" "}
                             wants to join{" "}
                             <Link
-                              href={`/project/${req.projectSlug}`}
+                              href={`/project/${req.projects.slug}`}
                               className="font-medium text-text-heading hover:text-accent"
                             >
-                              {req.projectName}
+                              {req.projects.name}
                             </Link>
                           </p>
                           {req.message && (
@@ -269,9 +308,9 @@ export default function DashboardPage() {
               <h3 className="text-small font-medium text-text-heading">
                 Your Requests
               </h3>
-              {MOCK_OUTGOING_REQUESTS.length > 0 ? (
+              {myRequests.length > 0 ? (
                 <div className="mt-3 space-y-3">
-                  {MOCK_OUTGOING_REQUESTS.map((req) => (
+                  {myRequests.map((req) => (
                     <div
                       key={req.id}
                       className="rounded-lg border border-border-default bg-bg-surface p-4"
@@ -280,14 +319,20 @@ export default function DashboardPage() {
                         <p className="text-small text-text-heading">
                           Request to join{" "}
                           <Link
-                            href={`/project/${req.projectSlug}`}
+                            href={`/project/${req.projects.slug}`}
                             className="font-medium text-text-heading hover:text-accent"
                           >
-                            {req.projectName}
+                            {req.projects.name}
                           </Link>
                         </p>
-                        <span className="rounded-sm bg-accent-muted px-2 py-0.5 text-caption text-accent">
-                          Pending
+                        <span className={`rounded-sm px-2 py-0.5 text-caption ${
+                          req.status === "pending"
+                            ? "bg-accent-muted text-accent"
+                            : req.status === "accepted"
+                              ? "bg-status-success/15 text-status-success"
+                              : "bg-bg-elevated text-text-muted"
+                        }`}>
+                          {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
                         </span>
                       </div>
                     </div>

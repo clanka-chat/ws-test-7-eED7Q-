@@ -26,6 +26,7 @@ export default function LoginPage() {
       provider: "github",
       options: {
         redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+        queryParams: { prompt: "select_account" },
       },
     });
     if (error) {
