@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Menu, X, MessageSquare } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Menu, X, MessageSquare, LogOut } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 type NavProps = {
   user?: {
@@ -13,14 +15,23 @@ type NavProps = {
 };
 
 export function Nav({ user, unreadMessages = 0 }: NavProps) {
+  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
 
   return (
     <nav
@@ -69,17 +80,28 @@ export function Nav({ user, unreadMessages = 0 }: NavProps) {
 
         <div className="hidden items-center gap-3 md:flex">
           {user ? (
-            <Link
-              href={`/u/${user.username}`}
-              className="flex items-center gap-2 rounded-md px-3 py-1.5 text-small text-text-secondary transition-colors duration-150 hover:bg-bg-surface hover:text-text-primary"
-            >
-              <img
-                src={user.avatar_url}
-                alt={user.username}
-                className="h-6 w-6 rounded-full"
-              />
-              <span>{user.username}</span>
-            </Link>
+            <>
+              <Link
+                href={`/u/${user.username}`}
+                className="flex items-center gap-2 rounded-md px-3 py-1.5 text-small text-text-secondary transition-colors duration-150 hover:bg-bg-surface hover:text-text-primary"
+              >
+                <img
+                  src={user.avatar_url}
+                  alt={user.username}
+                  className="h-6 w-6 rounded-full"
+                />
+                <span>{user.username}</span>
+              </Link>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-small text-text-muted transition-colors duration-150 hover:bg-bg-surface hover:text-text-primary disabled:opacity-50"
+              >
+                <LogOut size={14} />
+                Sign out
+              </button>
+            </>
           ) : (
             <Link
               href="/login"
@@ -136,18 +158,32 @@ export function Nav({ user, unreadMessages = 0 }: NavProps) {
             )}
             <div className="my-2 border-t border-border-subtle" />
             {user ? (
-              <Link
-                href={`/u/${user.username}`}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-small text-text-secondary transition-colors duration-150 hover:bg-bg-surface hover:text-text-primary"
-                onClick={() => setMobileOpen(false)}
-              >
-                <img
-                  src={user.avatar_url}
-                  alt={user.username}
-                  className="h-6 w-6 rounded-full"
-                />
-                <span>{user.username}</span>
-              </Link>
+              <>
+                <Link
+                  href={`/u/${user.username}`}
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-small text-text-secondary transition-colors duration-150 hover:bg-bg-surface hover:text-text-primary"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <img
+                    src={user.avatar_url}
+                    alt={user.username}
+                    className="h-6 w-6 rounded-full"
+                  />
+                  <span>{user.username}</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    handleSignOut();
+                  }}
+                  disabled={signingOut}
+                  className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-small text-text-muted transition-colors duration-150 hover:bg-bg-surface hover:text-text-primary disabled:opacity-50"
+                >
+                  <LogOut size={14} />
+                  Sign out
+                </button>
+              </>
             ) : (
               <Link
                 href="/login"

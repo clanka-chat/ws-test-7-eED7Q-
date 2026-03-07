@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/Button";
+import { useUser } from "@/components/useUser";
 import {
   User,
   Link as LinkIcon,
@@ -15,12 +16,9 @@ import {
   RefreshCw,
   CheckCircle,
   AlertTriangle,
+  Loader2,
 } from "lucide-react";
-
-const MOCK_USER = {
-  username: "spaghettipete",
-  avatar_url: "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=spaghettipete",
-};
+import type { Profile } from "../../../types/database";
 
 type SettingsSection = "profile" | "accounts" | "payments" | "privacy";
 
@@ -32,32 +30,53 @@ const SECTIONS: { id: SettingsSection; label: string; icon: React.ReactNode }[] 
 ];
 
 export default function SettingsPage() {
+  const { user, loading: userLoading } = useUser({ redirectTo: "/login" });
   const [section, setSection] = useState<SettingsSection>("profile");
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const [displayName, setDisplayName] = useState("Pete");
-  const [bio, setBio] = useState(
-    "Full-stack vibecoder. Building clanka.chat."
-  );
+  const [displayName, setDisplayName] = useState("");
+  const [bio, setBio] = useState("");
   const [skillsInput, setSkillsInput] = useState("");
-  const [skills, setSkills] = useState<string[]>([
-    "TypeScript",
-    "Next.js",
-    "Supabase",
-    "Product Design",
-  ]);
-  const [avatarUrl, setAvatarUrl] = useState(MOCK_USER.avatar_url);
+  const [skills, setSkills] = useState<string[]>([]);
+  const [avatarUrl, setAvatarUrl] = useState("");
 
-  const [githubUsername, setGithubUsername] = useState("spaghettipete");
+  const [githubUsername, setGithubUsername] = useState("");
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
   const [apiKeyCopied, setApiKeyCopied] = useState(false);
-  const [stripeConnected, setStripeConnected] = useState(true);
 
   const [privacyRevenue, setPrivacyRevenue] = useState(false);
   const [privacyProjects, setPrivacyProjects] = useState(false);
   const [privacyActivity, setPrivacyActivity] = useState(false);
 
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      const res = await fetch("/api/profiles/me");
+      if (res.ok) {
+        const data: Profile = await res.json();
+        setProfile(data);
+        setDisplayName(data.display_name ?? "");
+        setBio(data.bio ?? "");
+        setSkills(data.skills ?? []);
+        setAvatarUrl(
+          data.avatar_url ??
+          `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${data.username}`
+        );
+        setGithubUsername(data.github_username ?? "");
+        setApiKey(data.api_key);
+        setPrivacyRevenue(data.privacy_revenue);
+        setPrivacyProjects(data.privacy_projects);
+        setPrivacyActivity(data.privacy_activity);
+      }
+      setLoading(false);
+    }
+    if (!userLoading && user) {
+      load();
+    }
+  }, [userLoading, user]);
 
   function addSkill() {
     const val = skillsInput.trim();
@@ -67,14 +86,13 @@ export default function SettingsPage() {
     }
   }
 
-  function generateApiKey() {
-    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-    let key = "clk_";
-    for (let i = 0; i < 32; i++) {
-      key += chars[Math.floor(Math.random() * chars.length)];
+  async function generateApiKey() {
+    const res = await fetch("/api/profiles/me/api-key", { method: "POST" });
+    if (res.ok) {
+      const data: { api_key: string } = await res.json();
+      setApiKey(data.api_key);
+      setApiKeyVisible(true);
     }
-    setApiKey(key);
-    setApiKeyVisible(true);
   }
 
   function copyApiKey() {
@@ -87,13 +105,42 @@ export default function SettingsPage() {
 
   async function handleSave() {
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 500));
+    const res = await fetch("/api/profiles/me", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        display_name: displayName || null,
+        bio: bio || null,
+        avatar_url: avatarUrl || null,
+        skills,
+        github_username: githubUsername || null,
+        privacy_revenue: privacyRevenue,
+        privacy_projects: privacyProjects,
+        privacy_activity: privacyActivity,
+      }),
+    });
+    if (res.ok) {
+      const updated: Profile = await res.json();
+      setProfile(updated);
+    }
     setSaving(false);
+  }
+
+  if (userLoading || loading) {
+    return (
+      <>
+        <Nav user={user} />
+        <main className="mx-auto flex max-w-4xl items-center justify-center px-4 py-24">
+          <Loader2 size={24} className="animate-spin text-text-muted" />
+        </main>
+        <Footer />
+      </>
+    );
   }
 
   return (
     <>
-      <Nav user={MOCK_USER} />
+      <Nav user={user} />
       <main className="mx-auto max-w-4xl px-4 py-10">
         <h1 className="text-h1 font-bold text-text-heading">Settings</h1>
         <p className="mt-1 text-body text-text-secondary">
@@ -286,7 +333,7 @@ export default function SettingsPage() {
                         <code className="flex-1 rounded-md border border-border-default bg-bg-elevated px-3 py-2 font-mono text-small text-text-primary">
                           {apiKeyVisible
                             ? apiKey
-                            : "clk_" + "•".repeat(32)}
+                            : apiKey.slice(0, 3) + "_" + "•".repeat(32)}
                         </code>
                         <button
                           type="button"
@@ -364,26 +411,13 @@ export default function SettingsPage() {
                     your projects.
                   </p>
                   <div className="mt-4">
-                    {stripeConnected ? (
-                      <div className="flex items-center gap-3">
-                        <span className="flex items-center gap-1.5 rounded-sm bg-status-success/15 px-3 py-1.5 text-small text-status-success">
-                          <CheckCircle size={14} />
-                          Stripe Connected
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setStripeConnected(false)}
-                        >
-                          Disconnect
-                        </Button>
-                      </div>
+                    {profile?.stripe_connected ? (
+                      <span className="flex items-center gap-1.5 rounded-sm bg-status-success/15 px-3 py-1.5 text-small text-status-success">
+                        <CheckCircle size={14} />
+                        Stripe Connected
+                      </span>
                     ) : (
-                      <Button
-                        variant="primary"
-                        size="md"
-                        onClick={() => setStripeConnected(true)}
-                      >
+                      <Button variant="primary" size="md">
                         <CreditCard size={16} />
                         Connect Stripe
                       </Button>
