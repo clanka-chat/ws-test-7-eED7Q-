@@ -16,7 +16,7 @@ const variantStyles: Record<ButtonVariant, string> = {
   ghost:
     "text-text-secondary bg-transparent hover:bg-bg-surface hover:text-text-primary",
   danger:
-    "bg-status-error text-white font-medium hover:bg-red-600",
+    "bg-status-error text-white font-medium hover:brightness-110",
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
