@@ -2,9 +2,15 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { Webhooks } from '@octokit/webhooks'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const webhooks = new Webhooks({
-  secret: process.env.GITHUB_APP_WEBHOOK_SECRET!,
-})
+export const dynamic = 'force-dynamic'
+
+let _webhooks: Webhooks | null = null
+function getWebhooks() {
+  if (!_webhooks) {
+    _webhooks = new Webhooks({ secret: process.env.GITHUB_APP_WEBHOOK_SECRET! })
+  }
+  return _webhooks
+}
 
 function truncate(str: string, max: number) {
   return str.length > max ? str.slice(0, max - 1) + '…' : str
@@ -137,7 +143,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing signature' }, { status: 401 })
     }
 
-    const isValid = await webhooks.verify(body, signature)
+    const isValid = await getWebhooks().verify(body, signature)
     if (!isValid) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
