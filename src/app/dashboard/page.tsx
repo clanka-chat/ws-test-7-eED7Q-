@@ -269,7 +269,7 @@ export default function DashboardPage() {
               </h3>
               {pendingRequests.length > 0 ? (
                 <div className="mt-3 space-y-3">
-                  {pendingRequests.map((req) => (
+                  {pendingRequests.filter((req) => req.projects).map((req) => (
                     <div
                       key={req.id}
                       className="rounded-lg border border-border-default bg-bg-surface p-4"
@@ -334,7 +334,7 @@ export default function DashboardPage() {
               </h3>
               {myRequests.length > 0 ? (
                 <div className="mt-3 space-y-3">
-                  {myRequests.map((req) => (
+                  {myRequests.filter((req) => req.projects).map((req) => (
                     <div
                       key={req.id}
                       className="rounded-lg border border-border-default bg-bg-surface p-4"
