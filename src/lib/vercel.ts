@@ -47,14 +47,22 @@ export async function createVercelProject(name: string, repoFullName: string) {
   throw new Error(`Vercel API error ${res.status}: ${body}`)
 }
 
-export async function createDeployHook(projectId: string, name: string) {
-  return vercelFetch(`/v10/projects/${projectId}/deploy-hooks`, {
+export async function createDeployHook(projectId: string, name: string): Promise<{ id: string; url: string }> {
+  const project = await vercelFetch(`/v10/projects/${projectId}/deploy-hooks`, {
     method: 'POST',
     body: JSON.stringify({
       name,
       ref: 'main',
     }),
   })
+
+  // Response is the full project — hooks are in link.deployHooks[]
+  const hooks = project?.link?.deployHooks ?? []
+  const hook = hooks.find((h: { name: string }) => h.name === name) ?? hooks[hooks.length - 1]
+  if (!hook?.url) {
+    throw new Error('Deploy hook was created but URL not found in response')
+  }
+  return { id: hook.id, url: hook.url }
 }
 
 export async function getDeployment(deploymentId: string) {
