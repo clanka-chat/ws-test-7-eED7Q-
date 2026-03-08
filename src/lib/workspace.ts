@@ -57,7 +57,7 @@ export async function createWorkspace(
     const createRes = await octokit.request('POST /orgs/{org}/repos', {
       org: GITHUB_ORG,
       name: repoName,
-      private: true,
+      private: false,
       auto_init: true,
       description: project.name,
     });

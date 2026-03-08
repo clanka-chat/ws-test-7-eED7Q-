@@ -19,17 +19,32 @@ async function vercelFetch(path: string, options: RequestInit = {}) {
 }
 
 export async function createVercelProject(name: string, repoFullName: string) {
-  return vercelFetch('/v10/projects', {
+  const lcName = name.toLowerCase()
+  const res = await fetch(`${VERCEL_API_BASE}/v10/projects`, {
     method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({
-      name,
+      name: lcName,
       framework: 'nextjs',
-      gitRepository: {
-        type: 'github',
-        repo: repoFullName,
-      },
+      gitRepository: { type: 'github', repo: repoFullName },
     }),
   })
+
+  if (res.ok) return res.json()
+
+  if (res.status === 409) {
+    // Project may already exist from a previous partial attempt
+    const getRes = await fetch(`${VERCEL_API_BASE}/v9/projects/${lcName}`, {
+      headers: { Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}` },
+    })
+    if (getRes.ok) return getRes.json()
+  }
+
+  const body = await res.text()
+  throw new Error(`Vercel API error ${res.status}: ${body}`)
 }
 
 export async function createDeployHook(projectId: string, name: string) {
