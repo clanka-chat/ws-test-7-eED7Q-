@@ -18,7 +18,7 @@ export async function GET() {
   // Projects I collaborate on
   const { data: collaborations } = await supabase
     .from('collaborators')
-    .select('role, revenue_split, project_id, projects!project_id(id, slug, name, stage)')
+    .select('role, revenue_split, project_id, projects!project_id(id, slug, name, stage, github_repo_url)')
     .eq('user_id', user.id)
     .eq('status', 'active')
 
