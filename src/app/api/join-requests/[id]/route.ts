@@ -65,9 +65,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const conversationId = generateConversationId(joinRequest.requester_id, user.id)
     await supabase.from('messages').insert({
       conversation_id: conversationId,
-      sender_id: joinRequest.requester_id,
-      receiver_id: user.id,
-      content: joinRequest.message || 'Hey! Excited to collaborate on this project.',
+      sender_id: user.id,
+      receiver_id: joinRequest.requester_id,
+      content: 'Welcome aboard! Let\'s discuss the project.',
       project_id: project.id,
     })
 
