@@ -28,8 +28,6 @@ import {
   ChevronRight,
   Pencil,
   Plus,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 import type { WorkspaceTerm, Json } from "../../../../../types/database";
 
@@ -680,9 +678,8 @@ function CodeSection({ slug, githubRepoUrl, isCreator }: { slug: string; githubR
 type EnvVar = {
   id: string;
   key: string;
-  value: string;
-  created_at: string;
-  updated_at: string;
+  target: string[];
+  createdAt: string;
 };
 
 type EnvVarsResponse = {
@@ -706,9 +703,6 @@ function EnvVarsSection({ slug }: { slug: string }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [editSubmitting, setEditSubmitting] = useState(false);
-
-  // Reveal state
-  const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
 
   // Fetch env vars when section is first expanded
   useEffect(() => {
@@ -797,23 +791,6 @@ function EnvVarsSection({ slug }: { slug: string }) {
     }
   }
 
-  function toggleReveal(id: string) {
-    setRevealedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }
-
-  function maskValue(value: string): string {
-    if (value.length <= 4) return "••••••••";
-    return value.slice(0, 2) + "••••••" + value.slice(-2);
-  }
-
   return (
     <div className="mt-6 border-t border-border-subtle pt-6">
       <button
@@ -858,13 +835,14 @@ function EnvVarsSection({ slug }: { slug: string }) {
                             type="text"
                             value={editValue}
                             onChange={(e) => setEditValue(e.target.value)}
+                            placeholder="Enter new value"
                             autoFocus
-                            className="h-8 flex-1 rounded-md border border-border-default bg-bg-input px-2 font-mono text-small text-text-primary focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-accent"
+                            className="h-8 flex-1 rounded-md border border-border-default bg-bg-input px-2 font-mono text-small text-text-primary placeholder:text-text-muted focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-accent"
                           />
                           <Button
                             size="sm"
                             onClick={() => handleUpdate(envVar.id)}
-                            disabled={editSubmitting}
+                            disabled={editSubmitting || !editValue.trim()}
                           >
                             {editSubmitting ? "..." : "Save"}
                           </Button>
@@ -878,18 +856,11 @@ function EnvVarsSection({ slug }: { slug: string }) {
                       ) : (
                         <>
                           <span className="flex-1 truncate font-mono text-small text-text-secondary">
-                            {revealedIds.has(envVar.id) ? envVar.value : maskValue(envVar.value)}
+                            ••••••••
                           </span>
                           <div className="flex shrink-0 items-center gap-1">
                             <button
-                              onClick={() => toggleReveal(envVar.id)}
-                              className="rounded p-1 text-text-muted hover:bg-bg-elevated hover:text-text-primary"
-                              title={revealedIds.has(envVar.id) ? "Hide" : "Reveal"}
-                            >
-                              {revealedIds.has(envVar.id) ? <EyeOff size={14} /> : <Eye size={14} />}
-                            </button>
-                            <button
-                              onClick={() => { setEditingId(envVar.id); setEditValue(envVar.value); }}
+                              onClick={() => { setEditingId(envVar.id); setEditValue(""); }}
                               className="rounded p-1 text-text-muted hover:bg-bg-elevated hover:text-text-primary"
                               title="Edit"
                             >
