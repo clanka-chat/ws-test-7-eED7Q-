@@ -1,5 +1,6 @@
 import { getInstallationOctokit, GITHUB_ORG } from '@/lib/github'
 import { createVercelProject, createDeployHook } from '@/lib/vercel'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function createWorkspace(
@@ -91,8 +92,13 @@ export async function createWorkspace(
   // 7. Create Vercel deploy hook
   const deployHook = await createDeployHook(vercelProject.id, `${repoName}-deploy`)
 
-  // 8. Update project with workspace info
-  const { data: updatedProject, error } = await supabase
+  // 8. Update project with workspace info (use admin client to bypass RLS —
+  // the accepting user may be a collaborator, not the creator)
+  const adminSupabase = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+  const { data: updatedProject, error } = await adminSupabase
     .from('projects')
     .update({
       github_repo_name: repoName,
