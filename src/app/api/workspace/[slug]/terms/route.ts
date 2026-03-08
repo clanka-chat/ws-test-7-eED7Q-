@@ -96,14 +96,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'splits must be an object mapping user IDs to percentages' }, { status: 400 })
   }
 
-  // Validate splits sum to 100
+  // Validate splits sum to 95 (5% platform fee)
   const values = Object.values(splits) as number[]
   if (values.some(v => typeof v !== 'number' || v < 0)) {
     return NextResponse.json({ error: 'All split values must be non-negative numbers' }, { status: 400 })
   }
   const sum = values.reduce((a, b) => a + b, 0)
-  if (sum !== 100) {
-    return NextResponse.json({ error: `Splits must sum to 100, got ${sum}` }, { status: 400 })
+  if (sum !== 95) {
+    return NextResponse.json({ error: `Splits must sum to 95 (5% is the platform fee), got ${sum}` }, { status: 400 })
   }
 
   // Validate all user IDs are team members
