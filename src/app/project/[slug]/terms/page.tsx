@@ -191,6 +191,12 @@ export default function TermsPage({
               <SplitBar splits={termsSplits} team={team} />
               <SplitList splits={termsSplits} team={team} acceptedBy={terms.accepted_by} />
             </div>
+
+            <div className="mt-6">
+              <Link href={`/project/${slug}/workspace`}>
+                <Button size="lg">Go to Workspace &rarr;</Button>
+              </Link>
+            </div>
           </div>
         )}
 
