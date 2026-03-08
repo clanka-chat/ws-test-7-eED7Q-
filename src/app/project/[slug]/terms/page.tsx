@@ -118,7 +118,7 @@ export default function TermsPage({
 
     try {
       const res = await fetch(`/api/workspace/${slug}/terms/${terms.id}/accept`, {
-        method: "POST",
+        method: "PATCH",
       });
 
       if (res.ok) {
