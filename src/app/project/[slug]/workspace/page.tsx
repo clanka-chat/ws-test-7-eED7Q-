@@ -744,10 +744,14 @@ function EnvVarsSection({ slug }: { slug: string }) {
         body: JSON.stringify({ key, value: addingValue }),
       });
       if (res.ok) {
-        const created: EnvVar = await res.json();
-        setEnvVars((prev) => [...prev, created]);
         setAddingKey("");
         setAddingValue("");
+        // Re-fetch the full list since POST only returns { created: true }
+        const listRes = await fetch(`/api/workspace/${slug}/env-vars`);
+        if (listRes.ok) {
+          const data: EnvVarsResponse = await listRes.json();
+          setEnvVars(data.env_vars);
+        }
       } else {
         const err: { error?: string } = await res.json().catch(() => ({ error: "Failed to add variable" }));
         setAddError(err.error ?? "Failed to add variable");
@@ -761,14 +765,12 @@ function EnvVarsSection({ slug }: { slug: string }) {
   async function handleUpdate(id: string) {
     setEditSubmitting(true);
     try {
-      const res = await fetch(`/api/workspace/${slug}/env-vars/${id}`, {
+      const res = await fetch(`/api/workspace/${slug}/env-vars`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ value: editValue }),
+        body: JSON.stringify({ envId: id, value: editValue }),
       });
       if (res.ok) {
-        const updated: EnvVar = await res.json();
-        setEnvVars((prev) => prev.map((v) => (v.id === id ? updated : v)));
         setEditingId(null);
         setEditValue("");
       }
@@ -780,8 +782,10 @@ function EnvVarsSection({ slug }: { slug: string }) {
 
   async function handleDelete(id: string) {
     try {
-      const res = await fetch(`/api/workspace/${slug}/env-vars/${id}`, {
+      const res = await fetch(`/api/workspace/${slug}/env-vars`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ envId: id }),
       });
       if (res.ok) {
         setEnvVars((prev) => prev.filter((v) => v.id !== id));
