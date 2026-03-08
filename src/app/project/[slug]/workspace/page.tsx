@@ -4,8 +4,20 @@ import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { Button } from "@/components/Button";
 import { useUser } from "@/components/useUser";
-import { Loader2, ExternalLink, Github, Globe } from "lucide-react";
+import {
+  Loader2,
+  ExternalLink,
+  Github,
+  Globe,
+  ArrowUp,
+  Flag,
+  AlertTriangle,
+  CheckCircle,
+  GitCommit,
+  Rocket,
+} from "lucide-react";
 import type { WorkspaceTerm } from "../../../../../types/database";
 
 const splitBarColors = [
@@ -17,6 +29,54 @@ const splitBarColors = [
 ];
 
 const PLATFORM_FEE_PCT = 5;
+
+const categoryIcons: Record<string, React.ReactNode> = {
+  progress: <ArrowUp size={14} />,
+  milestone: <Flag size={14} />,
+  blocker: <AlertTriangle size={14} />,
+  decision: <CheckCircle size={14} />,
+  code: <GitCommit size={14} />,
+  deploy: <Rocket size={14} />,
+};
+
+const categoryColors: Record<string, string> = {
+  progress: "bg-accent-muted text-accent",
+  milestone: "bg-status-success/15 text-status-success",
+  blocker: "bg-status-error/15 text-status-error",
+  decision: "bg-status-info/15 text-status-info",
+  code: "bg-bg-elevated text-text-muted",
+  deploy: "bg-purple-500/15 text-purple-400",
+};
+
+const categoryLabels: Record<string, string> = {
+  progress: "Progress",
+  milestone: "Milestone",
+  blocker: "Blocker",
+  decision: "Decision",
+  code: "Code",
+  deploy: "Deploy",
+};
+
+function relativeTime(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHr / 24);
+
+  if (diffSec < 60) return "just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHr < 24) return `${diffHr}h ago`;
+  if (diffDay === 1) return "yesterday";
+  if (diffDay < 7) return `${diffDay}d ago`;
+
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
 
 type WorkspaceTeamMember = {
   id: string;
@@ -39,10 +99,26 @@ type WorkspaceProject = {
   vercel_project_id: string | null;
 };
 
+type TimelineEntry = {
+  id: string;
+  category: string;
+  title: string;
+  description: string | null;
+  source: string;
+  metadata: unknown;
+  created_at: string;
+  user: {
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null;
+};
+
 type WorkspaceResponse = {
   project: WorkspaceProject;
   team: WorkspaceTeamMember[];
   terms: WorkspaceTerm | null;
+  timeline: TimelineEntry[];
 };
 
 export default function WorkspacePage({
@@ -110,7 +186,7 @@ export default function WorkspacePage({
     );
   }
 
-  const { project, team, terms } = workspace;
+  const { project, team, terms, timeline } = workspace;
   const isSettingUp = !project.github_repo_url;
 
   const termsSplits: Record<string, number> | undefined =
@@ -270,8 +346,180 @@ export default function WorkspacePage({
             ))}
           </div>
         </div>
+
+        {/* Timeline */}
+        <div className="mt-8">
+          <h2 className="text-h3 font-semibold text-text-heading">Timeline</h2>
+
+          <PostUpdateForm
+            slug={slug}
+            onPost={(entry) =>
+              setWorkspace((prev) =>
+                prev ? { ...prev, timeline: [entry, ...prev.timeline] } : prev
+              )
+            }
+          />
+
+          {timeline.length > 0 ? (
+            <div className="mt-6 space-y-3">
+              {timeline.map((entry) => (
+                <TimelineCard key={entry.id} entry={entry} />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-6 rounded-lg border border-border-subtle bg-bg-surface p-8 text-center">
+              <p className="text-body text-text-secondary">
+                No activity yet. Post your first update to get started.
+              </p>
+            </div>
+          )}
+        </div>
       </main>
       <Footer />
     </>
+  );
+}
+
+function PostUpdateForm({
+  slug,
+  onPost,
+}: {
+  slug: string;
+  onPost: (entry: TimelineEntry) => void;
+}) {
+  const [category, setCategory] = useState("progress");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/workspace/${slug}/updates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category,
+          title: title.trim(),
+          description: description.trim() || null,
+        }),
+      });
+
+      if (res.ok) {
+        const data: { update: TimelineEntry } = await res.json();
+        onPost(data.update);
+        setTitle("");
+        setDescription("");
+        setCategory("progress");
+      } else {
+        const err: { error?: string } = await res.json().catch(() => ({ error: "Something went wrong" }));
+        setError(err.error ?? "Something went wrong");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    }
+    setSubmitting(false);
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-4 space-y-3 rounded-lg border border-border-subtle bg-bg-surface p-4">
+      <div className="flex gap-3">
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          aria-label="Update category"
+          className="h-10 rounded-md border border-border-default bg-bg-input px-3 text-small text-text-primary focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-accent"
+        >
+          <option value="progress">Progress</option>
+          <option value="milestone">Milestone</option>
+          <option value="blocker">Blocker</option>
+          <option value="decision">Decision</option>
+        </select>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="What did you work on?"
+          maxLength={120}
+          required
+          aria-label="Update title"
+          className="h-10 flex-1 rounded-md border border-border-default bg-bg-input px-3 text-small text-text-primary placeholder:text-text-muted focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-accent"
+        />
+      </div>
+      <textarea
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Add details (optional)"
+        rows={2}
+        aria-label="Update description"
+        className="w-full rounded-md border border-border-default bg-bg-input px-3 py-2 text-small text-text-primary placeholder:text-text-muted focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-accent"
+      />
+      <div className="flex items-center justify-between">
+        {error && (
+          <p role="alert" className="text-caption text-status-error">{error}</p>
+        )}
+        <div className="ml-auto">
+          <Button type="submit" size="sm" disabled={submitting || !title.trim()}>
+            {submitting ? "Posting..." : "Post Update"}
+          </Button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+function SourceBadge({ source }: { source: string }) {
+  const isAmber = source === "mcp";
+  return (
+    <span
+      className={`inline-flex items-center rounded-sm px-1.5 py-0.5 text-caption ${
+        isAmber
+          ? "bg-accent/10 text-accent"
+          : "bg-bg-elevated text-text-muted"
+      }`}
+    >
+      via {source === "mcp" ? "MCP" : source === "github" ? "GitHub" : source === "vercel" ? "Vercel" : "web"}
+    </span>
+  );
+}
+
+function TimelineCard({ entry }: { entry: TimelineEntry }) {
+  const icon = categoryIcons[entry.category] ?? <ArrowUp size={14} />;
+  const colorClass = categoryColors[entry.category] ?? "bg-bg-elevated text-text-muted";
+  const label = categoryLabels[entry.category] ?? entry.category;
+  const authorName = entry.user?.display_name ?? entry.user?.username ?? "System";
+
+  return (
+    <div className="rounded-lg border border-border-subtle bg-bg-surface px-4 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <span className={`mt-0.5 inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-caption ${colorClass}`}>
+            {icon}
+            {label}
+          </span>
+          <div className="min-w-0">
+            <p className="text-small font-medium text-text-heading">
+              {entry.title}
+            </p>
+            {entry.description && (
+              <p className="mt-1 whitespace-pre-line text-small text-text-secondary">
+                {entry.description}
+              </p>
+            )}
+          </div>
+        </div>
+        <SourceBadge source={entry.source} />
+      </div>
+      <div className="mt-2 flex items-center gap-2 text-caption text-text-muted">
+        <span>{authorName}</span>
+        <span>&middot;</span>
+        <span>{relativeTime(entry.created_at)}</span>
+      </div>
+    </div>
   );
 }
