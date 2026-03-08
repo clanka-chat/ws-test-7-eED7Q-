@@ -56,3 +56,17 @@ export async function createDeployHook(projectId: string, name: string) {
     }),
   })
 }
+
+export async function getDeployment(deploymentId: string) {
+  const res = await fetch(`${VERCEL_API_BASE}/v13/deployments/${deploymentId}`, {
+    headers: {
+      Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}`,
+    },
+  })
+  if (!res.ok) return null
+  return res.json()
+}
+
+export async function listDeployments(projectId: string, limit = 10) {
+  return vercelFetch(`/v6/deployments?projectId=${projectId}&limit=${limit}`)
+}
