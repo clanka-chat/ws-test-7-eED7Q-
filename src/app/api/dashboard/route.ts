@@ -11,7 +11,7 @@ export async function GET() {
   // Projects I created
   const { data: myProjects } = await supabase
     .from('projects')
-    .select('id, slug, name, description, stage, tech_stack, created_at, project_roles(id, role_title, role_type, revenue_split, filled)')
+    .select('id, slug, name, description, stage, tech_stack, created_at, github_repo_url, project_roles(id, role_title, role_type, revenue_split, filled)')
     .eq('creator_id', user.id)
     .order('created_at', { ascending: false })
 
