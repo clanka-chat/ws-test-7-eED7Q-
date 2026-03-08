@@ -30,7 +30,7 @@ async function handlePush(payload: Record<string, unknown>) {
     id: string
     message: string
     url: string
-    author: { name: string }
+    author: { name: string } | null
   }[]
 
   if (commits.length === 0) return
@@ -44,7 +44,7 @@ async function handlePush(payload: Record<string, unknown>) {
     metadata: {
       sha: commit.id,
       url: commit.url,
-      author: commit.author.name,
+      author: commit.author?.name ?? 'unknown',
     },
   }))
 
@@ -61,13 +61,15 @@ async function handlePullRequest(payload: Record<string, unknown>) {
   const project = await findProjectByRepo(repository.full_name)
   if (!project) return
 
-  const pr = payload.pull_request as {
+  const prRaw = payload.pull_request as {
     title: string
     number: number
     html_url: string
     merged: boolean
-    user: { login: string }
-  }
+    user: { login: string } | null
+  } | undefined
+  if (!prRaw) return
+  const pr = prRaw
 
   let prefix: string
   if (action === 'opened') {
@@ -87,7 +89,7 @@ async function handlePullRequest(payload: Record<string, unknown>) {
     metadata: {
       pr_number: pr.number,
       url: pr.html_url,
-      author: pr.user.login,
+      author: pr.user?.login ?? 'unknown',
       action,
       merged: pr.merged,
     },
@@ -101,8 +103,9 @@ async function handleDeploymentStatus(payload: Record<string, unknown>) {
   const deploymentStatus = payload.deployment_status as {
     state: string
     target_url: string | null
-  }
-  const deployment = payload.deployment as { sha: string }
+  } | undefined
+  const deployment = payload.deployment as { sha: string } | undefined
+  if (!deploymentStatus || !deployment) return
 
   if (!['success', 'failure', 'error'].includes(deploymentStatus.state)) return
 
@@ -157,6 +160,6 @@ export async function POST(request: NextRequest) {
     }
   } catch (err) {
     console.error('GitHub webhook error:', err)
-    return NextResponse.json({ error: 'Internal error' }, { status: 200 })
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }
