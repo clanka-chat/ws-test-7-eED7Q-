@@ -953,7 +953,7 @@ function DeployCard({ deploy }: { deploy: DeployEntry }) {
           </span>
           {deploy.status === "ready" && deploy.vercel_url && (
             <a
-              href={`https://${deploy.vercel_url}`}
+              href={deploy.vercel_url}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-caption text-status-success hover:underline"
