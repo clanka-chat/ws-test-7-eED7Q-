@@ -50,6 +50,8 @@ export default function TermsPage({
   const [accepting, setAccepting] = useState(false);
 
   useEffect(() => {
+    if (userLoading) return;
+    if (!user) return;
     async function load() {
       try {
         const res = await fetch(`/api/workspace/${slug}/terms`);
@@ -68,6 +70,8 @@ export default function TermsPage({
             });
             setSplits(initial);
           }
+        } else {
+          setError("Could not load terms.");
         }
       } catch {
         setError("Failed to load terms. Please try again.");
@@ -75,7 +79,7 @@ export default function TermsPage({
       setLoading(false);
     }
     load();
-  }, [slug]);
+  }, [slug, userLoading, user]);
 
   const total = Object.values(splits).reduce((sum, v) => sum + v, 0);
 
@@ -172,7 +176,7 @@ export default function TermsPage({
         </h1>
 
         {error && (
-          <p className="mt-4 text-small text-status-error">{error}</p>
+          <p role="alert" className="mt-4 text-small text-status-error">{error}</p>
         )}
 
         {/* All accepted — success state */}
@@ -258,6 +262,7 @@ export default function TermsPage({
                       max={TEAM_TOTAL}
                       value={splits[member.id] ?? 0}
                       onChange={(e) => updateSplit(member.id, e.target.value)}
+                      aria-label={`Revenue split for ${member.display_name ?? member.username}`}
                       className="h-10 w-20 rounded-md border border-border-default bg-bg-input px-3 text-right font-mono text-small text-text-primary focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-accent"
                     />
                     <span className="text-small text-text-muted">%</span>
