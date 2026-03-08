@@ -18,7 +18,7 @@ import {
   GitCommit,
   Rocket,
 } from "lucide-react";
-import type { WorkspaceTerm } from "../../../../../types/database";
+import type { WorkspaceTerm, Json } from "../../../../../types/database";
 
 const splitBarColors = [
   "bg-accent",
@@ -105,7 +105,7 @@ type TimelineEntry = {
   title: string;
   description: string | null;
   source: string;
-  metadata: unknown;
+  metadata: Json | null;
   created_at: string;
   user: {
     username: string;
@@ -137,22 +137,31 @@ export default function WorkspacePage({
   useEffect(() => {
     if (userLoading) return;
     if (!user) return;
+    const controller = new AbortController();
     async function load() {
       try {
-        const res = await fetch(`/api/workspace/${slug}`);
+        const res = await fetch(`/api/workspace/${slug}`, {
+          signal: controller.signal,
+        });
         if (res.ok) {
           const data: WorkspaceResponse = await res.json();
           setWorkspace(data);
+        } else if (res.status === 403) {
+          setError("You don't have access to this workspace.");
+        } else if (res.status === 404) {
+          setError("Workspace not found.");
         } else {
           setError("Could not load workspace.");
         }
-      } catch {
+      } catch (err) {
+        if (controller.signal.aborted) return;
         setError("Failed to load workspace. Please try again.");
       }
       setLoading(false);
     }
     load();
-  }, [slug, userLoading, user]);
+    return () => controller.abort();
+  }, [slug, userLoading, user?.username]);
 
   if (userLoading || loading) {
     return (
@@ -235,7 +244,7 @@ export default function WorkspacePage({
         {!isSettingUp && (
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             <a
-              href={project.github_repo_url!}
+              href={project.github_repo_url ?? ""}
               target="_blank"
               rel="noopener noreferrer"
               className="group flex items-start gap-3 rounded-lg border border-border-default bg-bg-surface p-4 transition-all duration-150 hover:border-border-strong hover:shadow-md"
@@ -353,6 +362,7 @@ export default function WorkspacePage({
 
           <PostUpdateForm
             slug={slug}
+            user={user}
             onPost={(entry) =>
               setWorkspace((prev) =>
                 prev ? { ...prev, timeline: [entry, ...prev.timeline] } : prev
@@ -382,9 +392,11 @@ export default function WorkspacePage({
 
 function PostUpdateForm({
   slug,
+  user,
   onPost,
 }: {
   slug: string;
+  user: { username: string; avatar_url: string } | null;
   onPost: (entry: TimelineEntry) => void;
 }) {
   const [category, setCategory] = useState("progress");
@@ -420,7 +432,9 @@ function PostUpdateForm({
           source: "web",
           metadata: null,
           created_at: data.created_at,
-          user: null,
+          user: user
+            ? { username: user.username, display_name: null, avatar_url: user.avatar_url }
+            : null,
         };
         onPost(newEntry);
         setTitle("");
