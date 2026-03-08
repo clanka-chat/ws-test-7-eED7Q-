@@ -179,13 +179,20 @@ export default function ProjectPage({
               </Link>
             </p>
           </div>
-          <span
-            className={`inline-flex items-center rounded-sm px-2.5 py-1 font-mono text-caption ${
-              stageColors[project.stage] ?? "bg-bg-elevated text-text-muted"
-            }`}
-          >
-            {stageLabels[project.stage] ?? project.stage}
-          </span>
+          <div className="flex items-center gap-3">
+            {project.github_repo_url && userId && (userId === project.creator_id || joinStatus === "accepted") && (
+              <Link href={`/project/${project.slug}/workspace`}>
+                <Button size="md">Go to Workspace</Button>
+              </Link>
+            )}
+            <span
+              className={`inline-flex items-center rounded-sm px-2.5 py-1 font-mono text-caption ${
+                stageColors[project.stage] ?? "bg-bg-elevated text-text-muted"
+              }`}
+            >
+              {stageLabels[project.stage] ?? project.stage}
+            </span>
+          </div>
         </div>
 
         <div className="mt-6 flex flex-wrap gap-4 text-small text-text-secondary">
@@ -355,10 +362,10 @@ export default function ProjectPage({
         {user && userId && (userId === project.creator_id || joinStatus === "accepted") && (
           <div className="mt-6">
             <Link
-              href={`/project/${project.slug}/terms`}
+              href={project.github_repo_url ? `/project/${project.slug}/workspace` : `/project/${project.slug}/terms`}
               className="text-small text-accent hover:text-accent-hover"
             >
-              View Terms &rarr;
+              {project.github_repo_url ? "View Workspace" : "View Terms"} &rarr;
             </Link>
           </div>
         )}

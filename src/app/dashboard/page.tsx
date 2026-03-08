@@ -30,6 +30,7 @@ type DashboardProject = {
   tech_stack: string[];
   created_at: string;
   project_roles: DashboardProjectRole[];
+  github_repo_url: string | null;
 };
 
 type DashboardCollaboration = {
@@ -227,6 +228,7 @@ export default function DashboardPage() {
                     key={p.id}
                     project={p}
                     roles={p.project_roles}
+                    workspaceUrl={p.github_repo_url ? `/project/${p.slug}/workspace` : undefined}
                   />
                 ))}
                 {collaborations
@@ -234,7 +236,7 @@ export default function DashboardPage() {
                   .map((c) => (
                   <Link
                     key={c.projects.id}
-                    href={`/project/${c.projects.slug}`}
+                    href={c.projects.github_repo_url ? `/project/${c.projects.slug}/workspace` : `/project/${c.projects.slug}`}
                     className="group block rounded-lg border border-border-default bg-bg-surface p-4 transition-all duration-150 hover:scale-[1.01] hover:border-border-strong hover:shadow-md"
                   >
                     <div className="flex items-start justify-between gap-2">
