@@ -66,7 +66,7 @@ export default function TermsPage({
           }
         }
       } catch {
-        // fetch failed
+        setError("Failed to load terms. Please try again.");
       }
       setLoading(false);
     }
@@ -98,7 +98,7 @@ export default function TermsPage({
         const data: { terms: WorkspaceTerm } = await res.json();
         setTerms(data.terms);
       } else {
-        const err = await res.json().catch(() => ({ error: "Something went wrong" }));
+        const err: { error?: string } = await res.json().catch(() => ({ error: "Something went wrong" }));
         setError(err.error ?? "Something went wrong");
       }
     } catch {
@@ -108,6 +108,7 @@ export default function TermsPage({
   }
 
   async function handleAccept() {
+    if (!userId) return;
     setAccepting(true);
     setError(null);
 
@@ -119,11 +120,11 @@ export default function TermsPage({
       if (res.ok) {
         setTerms((prev) =>
           prev
-            ? { ...prev, accepted_by: [...prev.accepted_by, userId!] }
+            ? { ...prev, accepted_by: [...prev.accepted_by, userId] }
             : prev
         );
       } else {
-        const err = await res.json().catch(() => ({ error: "Something went wrong" }));
+        const err: { error?: string } = await res.json().catch(() => ({ error: "Something went wrong" }));
         setError(err.error ?? "Something went wrong");
       }
     } catch {
@@ -144,7 +145,10 @@ export default function TermsPage({
     );
   }
 
-  const termsSplits = terms?.splits as Record<string, number> | undefined;
+  const termsSplits: Record<string, number> | undefined =
+    terms?.splits && typeof terms.splits === "object" && !Array.isArray(terms.splits)
+      ? (terms.splits as Record<string, number>)
+      : undefined;
   const allAccepted = terms && team.length > 0 && team.every((m) => terms.accepted_by.includes(m.id));
   const userAccepted = terms && userId ? terms.accepted_by.includes(userId) : false;
 
@@ -177,7 +181,7 @@ export default function TermsPage({
 
             <div className="mt-6">
               <SplitBar splits={termsSplits} team={team} />
-              <SplitList splits={termsSplits} team={team} acceptedBy={terms!.accepted_by} />
+              <SplitList splits={termsSplits} team={team} acceptedBy={terms.accepted_by} />
             </div>
           </div>
         )}
