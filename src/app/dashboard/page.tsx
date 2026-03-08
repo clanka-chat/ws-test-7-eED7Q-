@@ -69,7 +69,7 @@ type DashboardData = {
 };
 
 export default function DashboardPage() {
-  const { user, loading: userLoading, unreadMessages } = useUser({ redirectTo: "/login" });
+  const { user, userId, loading: userLoading, unreadMessages } = useUser({ redirectTo: "/login" });
   const [activeTab, setActiveTab] = useState<"projects" | "requests">("projects");
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,10 +84,10 @@ export default function DashboardPage() {
       }
       setLoading(false);
     }
-    if (!userLoading && user) {
+    if (!userLoading && userId) {
       load();
     }
-  }, [userLoading, user]);
+  }, [userLoading, userId]);
 
   async function handleRequest(requestId: string, status: "accepted" | "rejected") {
     setProcessingRequest(requestId);
@@ -97,12 +97,15 @@ export default function DashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
-      if (res.ok && data) {
-        setData({
-          ...data,
-          pending_requests: data.pending_requests.map((r) =>
-            r.id === requestId ? { ...r, status } : r
-          ),
+      if (res.ok) {
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            pending_requests: prev.pending_requests.map((r) =>
+              r.id === requestId ? { ...r, status } : r
+            ),
+          };
         });
       }
     } catch {
@@ -129,7 +132,6 @@ export default function DashboardPage() {
   const pendingRequests = data?.pending_requests ?? [];
   const myRequests = data?.my_requests ?? [];
   const earnings = data?.earnings ?? { total: 0, this_month: 0, currency: "USD" };
-  console.log("collaborations", collaborations);
   const incomingPending = pendingRequests.filter((r) => r.projects && r.status === "pending");
   const incomingAccepted = pendingRequests.filter((r) => r.projects && r.status === "accepted");
   const hasProjects = myProjects.length + collaborations.length > 0;
