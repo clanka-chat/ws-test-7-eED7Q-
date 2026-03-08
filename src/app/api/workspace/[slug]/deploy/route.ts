@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { listDeployments } from '@/lib/vercel'
 import { NextResponse, type NextRequest } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 type RouteParams = { params: Promise<{ slug: string }> }
 
 export async function POST(_request: NextRequest, { params }: RouteParams) {

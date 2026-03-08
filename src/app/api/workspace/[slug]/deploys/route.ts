@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getDeployment } from '@/lib/vercel'
 import { NextResponse, type NextRequest } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 type RouteParams = { params: Promise<{ slug: string }> }
 
 const VERCEL_STATE_MAP: Record<string, string> = {
