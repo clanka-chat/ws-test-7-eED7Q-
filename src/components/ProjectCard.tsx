@@ -10,6 +10,7 @@ type ProjectCardProps = {
   project: ProjectCardProject;
   roles?: ProjectRole[];
   creatorName?: string;
+  workspaceUrl?: string;
 };
 
 const stageLabels: Record<string, string> = {
@@ -76,7 +77,7 @@ function RevenueSplitBar({ roles }: { roles: ProjectRole[] }) {
   );
 }
 
-export function ProjectCard({ project, roles = [], creatorName }: ProjectCardProps) {
+export function ProjectCard({ project, roles = [], creatorName, workspaceUrl }: ProjectCardProps) {
   return (
     <Link
       href={`/project/${project.slug}`}
@@ -112,6 +113,12 @@ export function ProjectCard({ project, roles = [], creatorName }: ProjectCardPro
 
       {creatorName && (
         <p className="mt-3 text-caption text-text-muted">by {creatorName}</p>
+      )}
+
+      {workspaceUrl && (
+        <p className="mt-2 text-caption text-status-success">
+          Workspace active
+        </p>
       )}
     </Link>
   );
