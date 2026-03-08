@@ -30,6 +30,7 @@ type TeamMember = {
 type TermsResponse = {
   terms: WorkspaceTerm | null;
   team: TeamMember[];
+  is_creator: boolean;
 };
 
 export default function TermsPage({
@@ -48,6 +49,7 @@ export default function TermsPage({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accepting, setAccepting] = useState(false);
+  const [isCreator, setIsCreator] = useState(false);
 
   useEffect(() => {
     if (userLoading) return;
@@ -60,6 +62,7 @@ export default function TermsPage({
           setTerms(data.terms);
           const fetchedTeam = data.team ?? [];
           setTeam(fetchedTeam);
+          setIsCreator(data.is_creator);
 
           if (!data.terms && fetchedTeam.length > 0) {
             const equal = Math.floor(TEAM_TOTAL / fetchedTeam.length);
@@ -232,8 +235,8 @@ export default function TermsPage({
           </div>
         )}
 
-        {/* No terms — propose form (only visible to team members) */}
-        {!terms && team.length > 0 && (
+        {/* No terms — propose form (only visible to creator) */}
+        {!terms && team.length > 0 && isCreator && (
           <div className="mt-8">
             <p className="text-body text-text-secondary">
               Propose how revenue will be split among the team.
@@ -314,7 +317,13 @@ export default function TermsPage({
           </div>
         )}
 
-        {!terms && team.length === 0 && !loading && (
+        {!terms && team.length > 0 && !isCreator && (
+          <p className="mt-8 text-body text-text-secondary">
+            Waiting for the project creator to propose revenue terms.
+          </p>
+        )}
+
+        {!terms && team.length === 0 && !loading && isCreator && (
           <p className="mt-8 text-body text-text-secondary">
             No team members yet. Accept collaborators before proposing terms.
           </p>
