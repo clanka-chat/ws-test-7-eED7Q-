@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { generateConversationId } from '@/lib/utils/conversation'
 import { NextResponse, type NextRequest } from 'next/server'
 
 type RouteParams = { params: Promise<{ id: string }> }
@@ -59,6 +60,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       })
 
     if (collabError) return NextResponse.json({ error: collabError.message }, { status: 500 })
+
+    // Start a conversation between requester and creator
+    const conversationId = generateConversationId(joinRequest.requester_id, user.id)
+    await supabase.from('messages').insert({
+      conversation_id: conversationId,
+      sender_id: joinRequest.requester_id,
+      receiver_id: user.id,
+      content: joinRequest.message || 'Hey! Excited to collaborate on this project.',
+      project_id: project.id,
+    })
 
     // Hide listing from explore — MVP assumes one co-builder per project
     await supabase
