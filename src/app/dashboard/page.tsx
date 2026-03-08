@@ -40,7 +40,7 @@ type DashboardCollaboration = {
     slug: string;
     name: string;
     stage: string;
-  };
+  } | null;
 };
 
 type PendingRequest = {
@@ -129,6 +129,7 @@ export default function DashboardPage() {
   const pendingRequests = data?.pending_requests ?? [];
   const myRequests = data?.my_requests ?? [];
   const earnings = data?.earnings ?? { total: 0, this_month: 0, currency: "USD" };
+  console.log("collaborations", collaborations);
   const incomingPending = pendingRequests.filter((r) => r.projects && r.status === "pending");
   const incomingAccepted = pendingRequests.filter((r) => r.projects && r.status === "accepted");
   const hasProjects = myProjects.length + collaborations.length > 0;
@@ -225,7 +226,9 @@ export default function DashboardPage() {
                     roles={p.project_roles}
                   />
                 ))}
-                {collaborations.filter((c) => c.projects).map((c) => (
+                {collaborations
+                  .filter((c): c is DashboardCollaboration & { projects: NonNullable<DashboardCollaboration["projects"]> } => c.projects !== null)
+                  .map((c) => (
                   <Link
                     key={c.projects.id}
                     href={`/project/${c.projects.slug}`}
@@ -384,7 +387,7 @@ export default function DashboardPage() {
                     >
                       <div className="flex items-center justify-between">
                         <p className="text-small text-text-heading">
-                          Request to join{" "}
+                          {req.status === "accepted" ? "Joined" : "Request to join"}{" "}
                           <Link
                             href={`/project/${req.projects.slug}`}
                             className="font-medium text-text-heading hover:text-accent"
@@ -392,15 +395,24 @@ export default function DashboardPage() {
                             {req.projects.name}
                           </Link>
                         </p>
-                        <span className={`rounded-sm px-2 py-0.5 text-caption ${
-                          req.status === "pending"
-                            ? "bg-accent-muted text-accent"
-                            : req.status === "accepted"
-                              ? "bg-status-success/15 text-status-success"
+                        {req.status === "accepted" ? (
+                          <Link
+                            href={`/project/${req.projects.slug}/terms`}
+                            className="shrink-0"
+                          >
+                            <Button size="sm" variant="secondary">
+                              Review Terms
+                            </Button>
+                          </Link>
+                        ) : (
+                          <span className={`rounded-sm px-2 py-0.5 text-caption ${
+                            req.status === "pending"
+                              ? "bg-accent-muted text-accent"
                               : "bg-bg-elevated text-text-muted"
-                        }`}>
-                          {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
-                        </span>
+                          }`}>
+                            {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
