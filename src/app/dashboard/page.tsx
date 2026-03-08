@@ -221,7 +221,7 @@ export default function DashboardPage() {
                     roles={p.project_roles}
                   />
                 ))}
-                {collaborations.map((c) => (
+                {collaborations.filter((c) => c.projects).map((c) => (
                   <Link
                     key={c.projects.id}
                     href={`/project/${c.projects.slug}`}
