@@ -78,3 +78,37 @@ export async function getDeployment(deploymentId: string) {
 export async function listDeployments(projectId: string, limit = 10) {
   return vercelFetch(`/v6/deployments?projectId=${projectId}&limit=${limit}`)
 }
+
+export async function listProjectEnvVars(projectId: string) {
+  return vercelFetch(`/v9/projects/${projectId}/env`)
+}
+
+export async function addProjectEnvVar(
+  projectId: string,
+  key: string,
+  value: string,
+  target: string[] = ['production', 'preview', 'development'],
+) {
+  return vercelFetch(`/v10/projects/${projectId}/env`, {
+    method: 'POST',
+    body: JSON.stringify({ key, value, type: 'encrypted', target }),
+  })
+}
+
+export async function updateProjectEnvVar(
+  projectId: string,
+  envId: string,
+  value: string,
+  target: string[] = ['production', 'preview', 'development'],
+) {
+  return vercelFetch(`/v9/projects/${projectId}/env/${envId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ value, type: 'encrypted', target }),
+  })
+}
+
+export async function deleteProjectEnvVar(projectId: string, envId: string) {
+  return vercelFetch(`/v9/projects/${projectId}/env/${envId}`, {
+    method: 'DELETE',
+  })
+}
