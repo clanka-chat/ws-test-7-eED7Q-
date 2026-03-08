@@ -102,7 +102,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'There are already proposed terms for this project' }, { status: 409 })
   }
 
-  const body = await request.json()
+  let body: Record<string, unknown>
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
   const { splits } = body
 
   if (!splits || typeof splits !== 'object' || Array.isArray(splits)) {
@@ -114,7 +119,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if (values.some(v => typeof v !== 'number' || v < 0)) {
     return NextResponse.json({ error: 'All split values must be non-negative numbers' }, { status: 400 })
   }
-  const sum = values.reduce((a, b) => a + b, 0)
+  const sum = Math.round(values.reduce((a, b) => a + b, 0) * 100) / 100
   if (sum !== 95) {
     return NextResponse.json({ error: `Splits must sum to 95 (5% is the platform fee), got ${sum}` }, { status: 400 })
   }

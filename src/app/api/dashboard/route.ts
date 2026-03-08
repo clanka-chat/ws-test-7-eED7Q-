@@ -53,12 +53,15 @@ export async function GET() {
   })
 
   // Pending join requests on my projects
-  const { data: pendingRequests } = await supabase
-    .from('join_requests')
-    .select('id, status, message, created_at, projects!project_id(slug, name), profiles!requester_id(username, display_name, avatar_url)')
-    .in('status', ['pending', 'accepted'])
-    .in('project_id', (myProjects ?? []).map(p => p.id))
-    .order('created_at', { ascending: false })
+  const myProjectIds = (myProjects ?? []).map(p => p.id)
+  const { data: pendingRequests } = myProjectIds.length > 0
+    ? await supabase
+        .from('join_requests')
+        .select('id, status, message, created_at, projects!project_id(slug, name), profiles!requester_id(username, display_name, avatar_url)')
+        .in('status', ['pending', 'accepted'])
+        .in('project_id', myProjectIds)
+        .order('created_at', { ascending: false })
+    : { data: [] as never[] }
 
   // My outgoing join requests
   const { data: myRequests } = await supabase
