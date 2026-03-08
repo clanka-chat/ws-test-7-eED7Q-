@@ -66,28 +66,38 @@ export default function ProjectPage({
   const [joinStatusLoading, setJoinStatusLoading] = useState(true);
 
   useEffect(() => {
-    async function loadProject() {
+    setProject(null);
+    setNotFound(false);
+    setLoading(true);
+    setJoinStatus("none");
+    setJoinStatusLoading(true);
+
+    async function load() {
+      let loadedProject: ApiProject | null = null;
       try {
         const res = await fetch(`/api/projects/${slug}`);
         if (res.ok) {
-          setProject(await res.json());
+          loadedProject = await res.json();
+          setProject(loadedProject);
         } else {
           setNotFound(true);
+          setLoading(false);
+          setJoinStatusLoading(false);
+          return;
         }
       } catch {
         setNotFound(true);
+        setLoading(false);
+        setJoinStatusLoading(false);
+        return;
       }
       setLoading(false);
-    }
-    loadProject();
-  }, [slug]);
 
-  useEffect(() => {
-    if (!userId || !project || userId === project.creator_id) {
-      setJoinStatusLoading(false);
-      return;
-    }
-    async function loadJoinStatus() {
+      if (!userId || !loadedProject || userId === loadedProject.creator_id) {
+        setJoinStatusLoading(false);
+        return;
+      }
+
       try {
         const joinRes = await fetch(`/api/projects/${slug}/join`);
         if (joinRes.ok) {
@@ -102,8 +112,8 @@ export default function ProjectPage({
       }
       setJoinStatusLoading(false);
     }
-    loadJoinStatus();
-  }, [slug, userId, project?.creator_id]);
+    load();
+  }, [slug, userId]);
 
   async function handleDelete() {
     if (!window.confirm("Are you sure you want to delete this project? This cannot be undone.")) {

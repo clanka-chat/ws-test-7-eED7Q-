@@ -76,13 +76,20 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [processingRequest, setProcessingRequest] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     async function load() {
-      const res = await fetch("/api/dashboard");
-      if (res.ok) {
-        const json: DashboardData = await res.json();
-        setData(json);
+      try {
+        const res = await fetch("/api/dashboard");
+        if (res.ok) {
+          const json: DashboardData = await res.json();
+          setData(json);
+        } else {
+          setFetchError(true);
+        }
+      } catch {
+        setFetchError(true);
       }
       setLoading(false);
     }
@@ -123,6 +130,20 @@ export default function DashboardPage() {
         <Nav user={user} loading={userLoading} unreadMessages={unreadMessages} />
         <main className="mx-auto flex max-w-6xl items-center justify-center px-4 py-24">
           <Loader2 size={24} className="animate-spin text-text-muted" />
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <>
+        <Nav user={user} loading={userLoading} unreadMessages={unreadMessages} />
+        <main className="mx-auto max-w-6xl px-4 py-24 text-center">
+          <p role="alert" className="text-body text-status-error">
+            Failed to load dashboard. Please try again.
+          </p>
         </main>
         <Footer />
       </>
@@ -228,7 +249,7 @@ export default function DashboardPage() {
                     key={p.id}
                     project={p}
                     roles={p.project_roles}
-                    workspaceUrl={p.github_repo_url ? `/project/${p.slug}/workspace` : undefined}
+                    hasWorkspace={!!p.github_repo_url}
                   />
                 ))}
                 {collaborations

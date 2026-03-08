@@ -4,7 +4,6 @@ import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
-import { Button } from "@/components/Button";
 import { useUser } from "@/components/useUser";
 import { Loader2, ExternalLink, Github, Globe } from "lucide-react";
 import type { WorkspaceTerm } from "../../../../../types/database";
