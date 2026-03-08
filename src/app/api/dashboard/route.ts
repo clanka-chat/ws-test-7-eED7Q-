@@ -26,7 +26,7 @@ export async function GET() {
   const { data: pendingRequests } = await supabase
     .from('join_requests')
     .select('id, status, message, created_at, projects!project_id(slug, name), profiles!requester_id(username, display_name, avatar_url)')
-    .eq('status', 'pending')
+    .in('status', ['pending', 'accepted'])
     .in('project_id', (myProjects ?? []).map(p => p.id))
     .order('created_at', { ascending: false })
 
