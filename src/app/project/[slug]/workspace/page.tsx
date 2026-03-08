@@ -22,6 +22,14 @@ import {
   Megaphone,
   ClipboardList,
   FileText,
+  Key,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  Pencil,
+  Plus,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import type { WorkspaceTerm, Json } from "../../../../../types/database";
 
@@ -133,6 +141,7 @@ type WorkspaceResponse = {
   team: WorkspaceTeamMember[];
   terms: WorkspaceTerm | null;
   timeline: TimelineEntry[];
+  is_creator: boolean;
 };
 
 type ClankaMdResponse = {
@@ -389,7 +398,7 @@ export default function WorkspacePage({
             />
           )}
           {activeTab === "work" && (
-            <WorkTab slug={slug} githubRepoUrl={project.github_repo_url} />
+            <WorkTab slug={slug} githubRepoUrl={project.github_repo_url} isCreator={workspace.is_creator} />
           )}
           {activeTab === "money" && (
             <MoneyTab
@@ -465,7 +474,7 @@ const deployStatusConfig: Record<string, { label: string; className: string; spi
   canceled: { label: "Canceled", className: "bg-bg-elevated text-text-muted" },
 };
 
-function WorkTab({ slug, githubRepoUrl }: { slug: string; githubRepoUrl: string | null }) {
+function WorkTab({ slug, githubRepoUrl, isCreator }: { slug: string; githubRepoUrl: string | null; isCreator: boolean }) {
   const [activeSection, setActiveSection] = useState<"code" | "marketing" | "management">("code");
 
   const sections = [
@@ -495,7 +504,7 @@ function WorkTab({ slug, githubRepoUrl }: { slug: string; githubRepoUrl: string 
 
       <div className="mt-4">
         {activeSection === "code" && (
-          <CodeSection slug={slug} githubRepoUrl={githubRepoUrl} />
+          <CodeSection slug={slug} githubRepoUrl={githubRepoUrl} isCreator={isCreator} />
         )}
         {activeSection === "marketing" && (
           <div className="rounded-lg border border-border-subtle bg-bg-surface p-8 text-center">
@@ -526,7 +535,7 @@ function WorkTab({ slug, githubRepoUrl }: { slug: string; githubRepoUrl: string 
 
 /* ─── Code Section (with Deploy Flow) ─── */
 
-function CodeSection({ slug, githubRepoUrl }: { slug: string; githubRepoUrl: string | null }) {
+function CodeSection({ slug, githubRepoUrl, isCreator }: { slug: string; githubRepoUrl: string | null; isCreator: boolean }) {
   const [deploys, setDeploys] = useState<DeployEntry[]>([]);
   const [loadingDeploys, setLoadingDeploys] = useState(true);
   const [deploying, setDeploying] = useState(false);
@@ -657,6 +666,288 @@ function CodeSection({ slug, githubRepoUrl }: { slug: string; githubRepoUrl: str
           <p className="mt-3 text-body text-text-secondary">
             No deploys yet. Click Deploy to publish your project.
           </p>
+        </div>
+      )}
+
+      {/* Env vars — creator only */}
+      {isCreator && <EnvVarsSection slug={slug} />}
+    </div>
+  );
+}
+
+/* ─── Env Vars Section ─── */
+
+type EnvVar = {
+  id: string;
+  key: string;
+  value: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type EnvVarsResponse = {
+  env_vars: EnvVar[];
+};
+
+function EnvVarsSection({ slug }: { slug: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [envVars, setEnvVars] = useState<EnvVar[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [fetched, setFetched] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Add form
+  const [addingKey, setAddingKey] = useState("");
+  const [addingValue, setAddingValue] = useState("");
+  const [addError, setAddError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
+  // Reveal state
+  const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
+
+  // Fetch env vars when section is first expanded
+  useEffect(() => {
+    if (!expanded || fetched) return;
+    const controller = new AbortController();
+    setLoading(true);
+    async function load() {
+      try {
+        const res = await fetch(`/api/workspace/${slug}/env-vars`, {
+          signal: controller.signal,
+        });
+        if (res.ok) {
+          const data: EnvVarsResponse = await res.json();
+          setEnvVars(data.env_vars);
+        } else {
+          setError("Could not load environment variables.");
+        }
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        setError("Failed to load environment variables.");
+      }
+      setLoading(false);
+      setFetched(true);
+    }
+    load();
+    return () => controller.abort();
+  }, [slug, expanded, fetched]);
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    const key = addingKey.trim().toUpperCase();
+    if (!key || !addingValue.trim()) return;
+    setSubmitting(true);
+    setAddError(null);
+    try {
+      const res = await fetch(`/api/workspace/${slug}/env-vars`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key, value: addingValue }),
+      });
+      if (res.ok) {
+        const created: EnvVar = await res.json();
+        setEnvVars((prev) => [...prev, created]);
+        setAddingKey("");
+        setAddingValue("");
+      } else {
+        const err: { error?: string } = await res.json().catch(() => ({ error: "Failed to add variable" }));
+        setAddError(err.error ?? "Failed to add variable");
+      }
+    } catch {
+      setAddError("Network error. Please try again.");
+    }
+    setSubmitting(false);
+  }
+
+  async function handleUpdate(id: string) {
+    setEditSubmitting(true);
+    try {
+      const res = await fetch(`/api/workspace/${slug}/env-vars/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: editValue }),
+      });
+      if (res.ok) {
+        const updated: EnvVar = await res.json();
+        setEnvVars((prev) => prev.map((v) => (v.id === id ? updated : v)));
+        setEditingId(null);
+        setEditValue("");
+      }
+    } catch {
+      // ignore
+    }
+    setEditSubmitting(false);
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      const res = await fetch(`/api/workspace/${slug}/env-vars/${id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setEnvVars((prev) => prev.filter((v) => v.id !== id));
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  function toggleReveal(id: string) {
+    setRevealedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function maskValue(value: string): string {
+    if (value.length <= 4) return "••••••••";
+    return value.slice(0, 2) + "••••••" + value.slice(-2);
+  }
+
+  return (
+    <div className="mt-6 border-t border-border-subtle pt-6">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center gap-2 text-left text-small font-semibold text-text-heading hover:text-accent transition-colors"
+      >
+        {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        <Key size={14} />
+        Environment Variables
+      </button>
+
+      {expanded && (
+        <div className="mt-4 space-y-3">
+          {loading && (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 size={18} className="animate-spin text-text-muted" />
+            </div>
+          )}
+
+          {error && (
+            <p role="alert" className="text-caption text-status-error">{error}</p>
+          )}
+
+          {fetched && !error && (
+            <>
+              {/* Existing env vars */}
+              {envVars.length > 0 ? (
+                <div className="space-y-2">
+                  {envVars.map((envVar) => (
+                    <div
+                      key={envVar.id}
+                      className="flex items-center gap-3 rounded-lg border border-border-subtle bg-bg-surface px-3 py-2"
+                    >
+                      <code className="shrink-0 font-mono text-small font-medium text-accent">
+                        {envVar.key}
+                      </code>
+                      <span className="text-text-muted">=</span>
+
+                      {editingId === envVar.id ? (
+                        <div className="flex flex-1 items-center gap-2">
+                          <input
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            autoFocus
+                            className="h-8 flex-1 rounded-md border border-border-default bg-bg-input px-2 font-mono text-small text-text-primary focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-accent"
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => handleUpdate(envVar.id)}
+                            disabled={editSubmitting}
+                          >
+                            {editSubmitting ? "..." : "Save"}
+                          </Button>
+                          <button
+                            onClick={() => { setEditingId(null); setEditValue(""); }}
+                            className="text-caption text-text-muted hover:text-text-primary"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="flex-1 truncate font-mono text-small text-text-secondary">
+                            {revealedIds.has(envVar.id) ? envVar.value : maskValue(envVar.value)}
+                          </span>
+                          <div className="flex shrink-0 items-center gap-1">
+                            <button
+                              onClick={() => toggleReveal(envVar.id)}
+                              className="rounded p-1 text-text-muted hover:bg-bg-elevated hover:text-text-primary"
+                              title={revealedIds.has(envVar.id) ? "Hide" : "Reveal"}
+                            >
+                              {revealedIds.has(envVar.id) ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </button>
+                            <button
+                              onClick={() => { setEditingId(envVar.id); setEditValue(envVar.value); }}
+                              className="rounded p-1 text-text-muted hover:bg-bg-elevated hover:text-text-primary"
+                              title="Edit"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(envVar.id)}
+                              className="rounded p-1 text-text-muted hover:bg-status-error/10 hover:text-status-error"
+                              title="Delete"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-small text-text-muted">No environment variables set.</p>
+              )}
+
+              {/* Add form */}
+              <form onSubmit={handleAdd} className="flex items-end gap-2">
+                <div className="flex-1">
+                  <label htmlFor="env-key" className="block text-caption text-text-muted mb-1">Key</label>
+                  <input
+                    id="env-key"
+                    type="text"
+                    value={addingKey}
+                    onChange={(e) => setAddingKey(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ""))}
+                    placeholder="MY_API_KEY"
+                    required
+                    className="h-9 w-full rounded-md border border-border-default bg-bg-input px-3 font-mono text-small text-text-primary placeholder:text-text-muted focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label htmlFor="env-value" className="block text-caption text-text-muted mb-1">Value</label>
+                  <input
+                    id="env-value"
+                    type="text"
+                    value={addingValue}
+                    onChange={(e) => setAddingValue(e.target.value)}
+                    placeholder="sk-..."
+                    required
+                    className="h-9 w-full rounded-md border border-border-default bg-bg-input px-3 font-mono text-small text-text-primary placeholder:text-text-muted focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                </div>
+                <Button type="submit" size="sm" disabled={submitting || !addingKey.trim() || !addingValue.trim()}>
+                  <Plus size={14} className="mr-1" />
+                  {submitting ? "Adding..." : "Add"}
+                </Button>
+              </form>
+              {addError && (
+                <p role="alert" className="text-caption text-status-error">{addError}</p>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
