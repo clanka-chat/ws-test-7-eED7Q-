@@ -131,5 +131,5 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data, { status: 201 })
+  return NextResponse.json({ terms: data }, { status: 201 })
 }
