@@ -100,5 +100,6 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     team,
     terms: terms ?? null,
     timeline,
+    is_creator: isCreator,
   })
 }
