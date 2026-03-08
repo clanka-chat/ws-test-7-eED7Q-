@@ -18,9 +18,39 @@ export async function GET() {
   // Projects I collaborate on
   const { data: collaborations } = await supabase
     .from('collaborators')
-    .select('role, revenue_split, projects!project_id(id, slug, name, stage)')
+    .select('role, revenue_split, project_id, projects!project_id(id, slug, name, stage)')
     .eq('user_id', user.id)
     .eq('status', 'active')
+
+  // Fetch terms status for collaborated projects
+  const collabProjectIds = (collaborations ?? []).map(c => c.project_id)
+  const { data: collabTerms } = collabProjectIds.length > 0
+    ? await supabase
+        .from('workspace_terms')
+        .select('project_id, status, accepted_by')
+        .in('project_id', collabProjectIds)
+        .order('created_at', { ascending: false })
+    : { data: [] as { project_id: string; status: string; accepted_by: string[] }[] }
+
+  // Build a map of project_id -> latest terms info
+  const termsByProject = new Map<string, { status: string; user_accepted: boolean }>()
+  for (const t of collabTerms ?? []) {
+    if (!termsByProject.has(t.project_id)) {
+      termsByProject.set(t.project_id, {
+        status: t.status,
+        user_accepted: (t.accepted_by ?? []).includes(user.id),
+      })
+    }
+  }
+
+  const collaborationsWithTerms = (collaborations ?? []).map(c => {
+    const terms = termsByProject.get(c.project_id)
+    return {
+      ...c,
+      terms_status: terms?.status ?? null,
+      terms_user_accepted: terms?.user_accepted ?? false,
+    }
+  })
 
   // Pending join requests on my projects
   const { data: pendingRequests } = await supabase
@@ -33,9 +63,33 @@ export async function GET() {
   // My outgoing join requests
   const { data: myRequests } = await supabase
     .from('join_requests')
-    .select('id, status, message, created_at, projects!project_id(slug, name)')
+    .select('id, status, message, created_at, project_id, projects!project_id(slug, name)')
     .eq('requester_id', user.id)
     .order('created_at', { ascending: false })
+
+  // For accepted outgoing requests, fetch terms status
+  const acceptedProjectIds = (myRequests ?? [])
+    .filter(r => r.status === 'accepted')
+    .map(r => r.project_id)
+  const { data: outgoingTerms } = acceptedProjectIds.length > 0
+    ? await supabase
+        .from('workspace_terms')
+        .select('project_id, status')
+        .in('project_id', acceptedProjectIds)
+        .order('created_at', { ascending: false })
+    : { data: [] as { project_id: string; status: string }[] }
+
+  const outgoingTermsByProject = new Map<string, string>()
+  for (const t of outgoingTerms ?? []) {
+    if (!outgoingTermsByProject.has(t.project_id)) {
+      outgoingTermsByProject.set(t.project_id, t.status)
+    }
+  }
+
+  const myRequestsWithTerms = (myRequests ?? []).map(r => ({
+    ...r,
+    terms_status: r.status === 'accepted' ? (outgoingTermsByProject.get(r.project_id) ?? null) : null,
+  }))
 
   // Mocked earnings
   const earnings = {
@@ -46,9 +100,9 @@ export async function GET() {
 
   return NextResponse.json({
     my_projects: myProjects ?? [],
-    collaborations: collaborations ?? [],
+    collaborations: collaborationsWithTerms,
     pending_requests: pendingRequests ?? [],
-    my_requests: myRequests ?? [],
+    my_requests: myRequestsWithTerms,
     earnings,
   })
 }
