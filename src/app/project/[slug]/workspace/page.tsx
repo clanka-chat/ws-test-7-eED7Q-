@@ -389,7 +389,7 @@ export default function WorkspacePage({
             />
           )}
           {activeTab === "work" && (
-            <WorkTab githubRepoUrl={project.github_repo_url} />
+            <WorkTab slug={slug} githubRepoUrl={project.github_repo_url} />
           )}
           {activeTab === "money" && (
             <MoneyTab
@@ -442,7 +442,30 @@ function TimelineTab({
 
 /* ─── Work Tab ─── */
 
-function WorkTab({ githubRepoUrl }: { githubRepoUrl: string | null }) {
+type DeployEntry = {
+  id: string;
+  vercel_deployment_id: string;
+  vercel_url: string | null;
+  status: string;
+  source: string;
+  error_message: string | null;
+  created_at: string;
+  triggered_by: { username: string; display_name: string | null } | null;
+};
+
+type DeploysResponse = {
+  deploys: DeployEntry[];
+};
+
+const deployStatusConfig: Record<string, { label: string; className: string; spinning?: boolean }> = {
+  queued: { label: "Queued...", className: "bg-accent/10 text-accent", spinning: true },
+  building: { label: "Deploying...", className: "bg-accent/10 text-accent", spinning: true },
+  ready: { label: "Live", className: "bg-status-success/10 text-status-success" },
+  error: { label: "Failed", className: "bg-status-error/10 text-status-error" },
+  canceled: { label: "Canceled", className: "bg-bg-elevated text-text-muted" },
+};
+
+function WorkTab({ slug, githubRepoUrl }: { slug: string; githubRepoUrl: string | null }) {
   const [activeSection, setActiveSection] = useState<"code" | "marketing" | "management">("code");
 
   const sections = [
@@ -472,27 +495,7 @@ function WorkTab({ githubRepoUrl }: { githubRepoUrl: string | null }) {
 
       <div className="mt-4">
         {activeSection === "code" && (
-          <div className="rounded-lg border border-border-subtle bg-bg-surface p-8 text-center">
-            <Code2 size={32} className="mx-auto text-text-muted" />
-            <p className="mt-3 text-body text-text-secondary">
-              Commits and pull requests will appear here once the GitHub integration is active.
-            </p>
-            <p className="mt-1 text-small text-text-muted">
-              Deploy your project from this tab.
-            </p>
-            {githubRepoUrl && (
-              <a
-                href={githubRepoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 inline-flex items-center gap-1.5 text-small text-accent hover:underline"
-              >
-                <Github size={14} />
-                View repository
-                <ExternalLink size={12} />
-              </a>
-            )}
-          </div>
+          <CodeSection slug={slug} githubRepoUrl={githubRepoUrl} />
         )}
         {activeSection === "marketing" && (
           <div className="rounded-lg border border-border-subtle bg-bg-surface p-8 text-center">
@@ -518,6 +521,193 @@ function WorkTab({ githubRepoUrl }: { githubRepoUrl: string | null }) {
         )}
       </div>
     </>
+  );
+}
+
+/* ─── Code Section (with Deploy Flow) ─── */
+
+function CodeSection({ slug, githubRepoUrl }: { slug: string; githubRepoUrl: string | null }) {
+  const [deploys, setDeploys] = useState<DeployEntry[]>([]);
+  const [loadingDeploys, setLoadingDeploys] = useState(true);
+  const [deploying, setDeploying] = useState(false);
+  const [deployError, setDeployError] = useState<string | null>(null);
+
+  const latestDeploy = deploys[0] ?? null;
+  const isInProgress = latestDeploy?.status === "queued" || latestDeploy?.status === "building";
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function fetchDeploys() {
+      try {
+        const res = await fetch(`/api/workspace/${slug}/deploys`, {
+          signal: controller.signal,
+        });
+        if (res.ok) {
+          const data: DeploysResponse = await res.json();
+          setDeploys(data.deploys);
+        }
+      } catch (err) {
+        if (controller.signal.aborted) return;
+      }
+      setLoadingDeploys(false);
+    }
+    fetchDeploys();
+    return () => controller.abort();
+  }, [slug]);
+
+  // Poll while a deploy is in progress
+  useEffect(() => {
+    if (!isInProgress) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/workspace/${slug}/deploys`);
+        if (res.ok) {
+          const data: DeploysResponse = await res.json();
+          setDeploys(data.deploys);
+        }
+      } catch {
+        // ignore polling errors
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [slug, isInProgress]);
+
+  async function handleDeploy() {
+    setDeploying(true);
+    setDeployError(null);
+    try {
+      const res = await fetch(`/api/workspace/${slug}/deploy`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        // Refresh deploys list to pick up the new deploy
+        const listRes = await fetch(`/api/workspace/${slug}/deploys`);
+        if (listRes.ok) {
+          const data: DeploysResponse = await listRes.json();
+          setDeploys(data.deploys);
+        }
+      } else {
+        const err: { error?: string } = await res.json().catch(() => ({ error: "Deploy failed" }));
+        setDeployError(err.error ?? "Deploy failed");
+      }
+    } catch {
+      setDeployError("Network error. Please try again.");
+    }
+    setDeploying(false);
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* GitHub repo link */}
+      {githubRepoUrl && (
+        <a
+          href={githubRepoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-small text-accent hover:underline"
+        >
+          <Github size={14} />
+          View repository
+          <ExternalLink size={12} />
+        </a>
+      )}
+
+      {/* Deploy button + status */}
+      <div className="flex items-center gap-3">
+        <Button
+          size="sm"
+          onClick={handleDeploy}
+          disabled={deploying || isInProgress}
+        >
+          {deploying ? (
+            <>
+              <Loader2 size={14} className="mr-1.5 animate-spin" />
+              Deploying...
+            </>
+          ) : (
+            <>
+              <Rocket size={14} className="mr-1.5" />
+              Deploy
+            </>
+          )}
+        </Button>
+        {latestDeploy && (
+          <DeployStatusBadge status={latestDeploy.status} />
+        )}
+      </div>
+      {deployError && (
+        <p role="alert" className="text-caption text-status-error">{deployError}</p>
+      )}
+
+      {/* Deploy history */}
+      {loadingDeploys ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 size={20} className="animate-spin text-text-muted" />
+        </div>
+      ) : deploys.length > 0 ? (
+        <div className="space-y-2">
+          <h4 className="text-small font-semibold text-text-heading">Deploy History</h4>
+          {deploys.map((deploy) => (
+            <DeployCard key={deploy.id} deploy={deploy} />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-lg border border-border-subtle bg-bg-surface p-8 text-center">
+          <Rocket size={32} className="mx-auto text-text-muted" />
+          <p className="mt-3 text-body text-text-secondary">
+            No deploys yet. Click Deploy to publish your project.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DeployStatusBadge({ status }: { status: string }) {
+  const config = deployStatusConfig[status] ?? { label: status, className: "bg-bg-elevated text-text-muted" };
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-caption ${config.className}`}>
+      {config.spinning && <Loader2 size={12} className="animate-spin" />}
+      {config.label}
+    </span>
+  );
+}
+
+function DeployCard({ deploy }: { deploy: DeployEntry }) {
+  const config = deployStatusConfig[deploy.status] ?? { label: deploy.status, className: "bg-bg-elevated text-text-muted" };
+  const triggeredBy = deploy.triggered_by?.display_name ?? deploy.triggered_by?.username ?? "System";
+
+  return (
+    <div className="rounded-lg border border-border-subtle bg-bg-surface p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-caption ${config.className}`}>
+            {config.spinning && <Loader2 size={12} className="animate-spin" />}
+            {config.label}
+          </span>
+          {deploy.status === "ready" && deploy.vercel_url && (
+            <a
+              href={`https://${deploy.vercel_url}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-caption text-status-success hover:underline"
+            >
+              {deploy.vercel_url}
+              <ExternalLink size={10} />
+            </a>
+          )}
+        </div>
+        <SourceBadge source={deploy.source} />
+      </div>
+      {deploy.status === "error" && deploy.error_message && (
+        <p className="mt-1.5 text-caption text-status-error">{deploy.error_message}</p>
+      )}
+      <div className="mt-1.5 flex items-center gap-2 text-caption text-text-muted">
+        <span>{triggeredBy}</span>
+        <span>&middot;</span>
+        <span>{relativeTime(deploy.created_at)}</span>
+      </div>
+    </div>
   );
 }
 
