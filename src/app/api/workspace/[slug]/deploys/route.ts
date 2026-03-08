@@ -62,7 +62,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       try {
         const deployment = await getDeployment(latest.vercel_deployment_id)
         if (deployment) {
-          const newStatus = VERCEL_STATE_MAP[deployment.state] ?? latest.status
+          const newStatus = VERCEL_STATE_MAP[deployment.readyState ?? deployment.state] ?? latest.status
           if (newStatus !== latest.status) {
             const updates: Record<string, string> = { status: newStatus, updated_at: new Date().toISOString() }
 
