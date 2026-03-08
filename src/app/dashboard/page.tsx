@@ -100,7 +100,9 @@ export default function DashboardPage() {
       if (res.ok && data) {
         setData({
           ...data,
-          pending_requests: data.pending_requests.filter((r) => r.id !== requestId),
+          pending_requests: data.pending_requests.map((r) =>
+            r.id === requestId ? { ...r, status } : r
+          ),
         });
       }
     } catch {
@@ -127,6 +129,8 @@ export default function DashboardPage() {
   const pendingRequests = data?.pending_requests ?? [];
   const myRequests = data?.my_requests ?? [];
   const earnings = data?.earnings ?? { total: 0, this_month: 0, currency: "USD" };
+  const incomingPending = pendingRequests.filter((r) => r.projects && r.status === "pending");
+  const incomingAccepted = pendingRequests.filter((r) => r.projects && r.status === "accepted");
   const hasProjects = myProjects.length + collaborations.length > 0;
 
   return (
@@ -202,9 +206,9 @@ export default function DashboardPage() {
             }`}
           >
             Requests
-            {pendingRequests.length > 0 && (
+            {incomingPending.length > 0 && (
               <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-accent text-caption font-bold text-bg-base">
-                {pendingRequests.length}
+                {incomingPending.length}
               </span>
             )}
           </button>
@@ -263,13 +267,52 @@ export default function DashboardPage() {
 
         {activeTab === "requests" && (
           <div className="mt-6 space-y-6">
+            {incomingAccepted.length > 0 && (
+              <div>
+                <h3 className="text-small font-medium text-text-heading">
+                  Accepted &mdash; Set Up Terms
+                </h3>
+                <div className="mt-3 space-y-3">
+                  {incomingAccepted.map((req) => (
+                    <div
+                      key={req.id}
+                      className="flex items-center justify-between rounded-lg border border-status-success/30 bg-status-success/5 p-4"
+                    >
+                      <div>
+                        <p className="text-small text-text-heading">
+                          <span className="font-medium text-accent">
+                            {req.profiles.display_name ?? req.profiles.username}
+                          </span>{" "}
+                          joined{" "}
+                          <Link
+                            href={`/project/${req.projects.slug}`}
+                            className="font-medium text-text-heading hover:text-accent"
+                          >
+                            {req.projects.name}
+                          </Link>
+                        </p>
+                      </div>
+                      <Link
+                        href={`/project/${req.projects.slug}/terms`}
+                        className="shrink-0"
+                      >
+                        <Button size="sm" variant="primary">
+                          Propose Terms
+                        </Button>
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
               <h3 className="text-small font-medium text-text-heading">
                 Incoming Requests
               </h3>
-              {pendingRequests.length > 0 ? (
+              {incomingPending.length > 0 ? (
                 <div className="mt-3 space-y-3">
-                  {pendingRequests.filter((req) => req.projects).map((req) => (
+                  {incomingPending.map((req) => (
                     <div
                       key={req.id}
                       className="rounded-lg border border-border-default bg-bg-surface p-4"

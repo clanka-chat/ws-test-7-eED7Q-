@@ -53,13 +53,14 @@ export default function TermsPage({
         if (res.ok) {
           const data: TermsResponse = await res.json();
           setTerms(data.terms);
-          setTeam(data.team);
+          const fetchedTeam = data.team ?? [];
+          setTeam(fetchedTeam);
 
-          if (!data.terms && data.team.length > 0) {
-            const equal = Math.floor(100 / data.team.length);
-            const remainder = 100 - equal * data.team.length;
+          if (!data.terms && fetchedTeam.length > 0) {
+            const equal = Math.floor(100 / fetchedTeam.length);
+            const remainder = 100 - equal * fetchedTeam.length;
             const initial: Record<string, number> = {};
-            data.team.forEach((m, i) => {
+            fetchedTeam.forEach((m, i) => {
               initial[m.id] = equal + (i === 0 ? remainder : 0);
             });
             setSplits(initial);
