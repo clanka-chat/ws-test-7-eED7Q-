@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createWorkspace } from '@/lib/workspace'
 import { NextResponse, type NextRequest } from 'next/server'
 
 type RouteParams = { params: Promise<{ slug: string; id: string }> }
@@ -14,7 +15,7 @@ export async function PATCH(_request: NextRequest, { params }: RouteParams) {
   // Look up project by slug
   const { data: project } = await supabase
     .from('projects')
-    .select('id, creator_id')
+    .select('id, slug, name, creator_id, github_repo_name')
     .eq('slug', slug)
     .single()
 
@@ -84,5 +85,20 @@ export async function PATCH(_request: NextRequest, { params }: RouteParams) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+
+  // Auto-trigger workspace creation when all members have accepted
+  let workspace = null
+  if (allAccepted && !project.github_repo_name) {
+    try {
+      workspace = await createWorkspace(supabase, project)
+    } catch (err) {
+      // Workspace creation failed — return terms but include the error
+      return NextResponse.json({
+        ...data,
+        workspace_error: err instanceof Error ? err.message : 'Workspace creation failed',
+      })
+    }
+  }
+
+  return NextResponse.json({ ...data, workspace })
 }
