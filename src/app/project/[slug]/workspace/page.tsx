@@ -17,6 +17,11 @@ import {
   CheckCircle,
   GitCommit,
   Rocket,
+  DollarSign,
+  Code2,
+  Megaphone,
+  ClipboardList,
+  FileText,
 } from "lucide-react";
 import type { WorkspaceTerm, Json } from "../../../../../types/database";
 
@@ -56,6 +61,15 @@ const categoryLabels: Record<string, string> = {
   code: "Code",
   deploy: "Deploy",
 };
+
+const TABS = [
+  { id: "timeline", label: "Timeline" },
+  { id: "work", label: "Work" },
+  { id: "money", label: "Money" },
+  { id: "clanka-md", label: "CLANKA.md" },
+] as const;
+
+type TabId = (typeof TABS)[number]["id"];
 
 function relativeTime(dateStr: string): string {
   const now = Date.now();
@@ -121,6 +135,16 @@ type WorkspaceResponse = {
   timeline: TimelineEntry[];
 };
 
+type ClankaMdResponse = {
+  own: { content: string; updated_at: string } | null;
+  collaborators: {
+    username: string;
+    display_name: string | null;
+    content: string;
+    updated_at: string;
+  }[];
+};
+
 export default function WorkspacePage({
   params,
 }: {
@@ -133,6 +157,7 @@ export default function WorkspacePage({
   const [workspace, setWorkspace] = useState<WorkspaceResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabId>("timeline");
 
   useEffect(() => {
     if (userLoading) return;
@@ -295,35 +320,9 @@ export default function WorkspacePage({
           </div>
         )}
 
-        {/* Team */}
+        {/* Team members (without split bar — that moves to Money tab) */}
         <div className="mt-8">
           <h2 className="text-h3 font-semibold text-text-heading">Team</h2>
-
-          {termsSplits && team.length > 0 && (
-            <div className="mt-4">
-              <div className="flex h-3 overflow-hidden rounded-full bg-bg-elevated">
-                {team.map((member, i) => {
-                  const pct = termsSplits[member.id] ?? 0;
-                  if (pct === 0) return null;
-                  return (
-                    <div
-                      key={member.id}
-                      className={`${splitBarColors[i % splitBarColors.length]} transition-all duration-150`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  );
-                })}
-                <div
-                  className="bg-text-muted/30 transition-all duration-150"
-                  style={{ width: `${PLATFORM_FEE_PCT}%` }}
-                />
-              </div>
-              <div className="mt-1 flex justify-end">
-                <span className="text-caption text-text-muted">{PLATFORM_FEE_PCT}% platform</span>
-              </div>
-            </div>
-          )}
-
           <div className="mt-4 space-y-2">
             {team.map((member, i) => (
               <div
@@ -356,32 +355,50 @@ export default function WorkspacePage({
           </div>
         </div>
 
-        {/* Timeline */}
-        <div className="mt-8">
-          <h2 className="text-h3 font-semibold text-text-heading">Timeline</h2>
+        {/* Tab bar */}
+        <div className="mt-8 border-b border-border-default">
+          <nav className="flex gap-0" aria-label="Workspace tabs">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 text-small font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? "border-b-2 border-accent text-accent"
+                    : "text-text-muted hover:text-text-primary"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
 
-          <PostUpdateForm
-            slug={slug}
-            user={user}
-            onPost={(entry) =>
-              setWorkspace((prev) =>
-                prev ? { ...prev, timeline: [entry, ...prev.timeline] } : prev
-              )
-            }
-          />
-
-          {timeline.length > 0 ? (
-            <div className="mt-6 space-y-3">
-              {timeline.map((entry) => (
-                <TimelineCard key={entry.id} entry={entry} />
-              ))}
-            </div>
-          ) : (
-            <div className="mt-6 rounded-lg border border-border-subtle bg-bg-surface p-8 text-center">
-              <p className="text-body text-text-secondary">
-                No activity yet. Post your first update to get started.
-              </p>
-            </div>
+        {/* Tab content */}
+        <div className="mt-6">
+          {activeTab === "timeline" && (
+            <TimelineTab
+              slug={slug}
+              user={user}
+              timeline={timeline}
+              onPost={(entry) =>
+                setWorkspace((prev) =>
+                  prev ? { ...prev, timeline: [entry, ...prev.timeline] } : prev
+                )
+              }
+            />
+          )}
+          {activeTab === "work" && (
+            <WorkTab githubRepoUrl={project.github_repo_url} />
+          )}
+          {activeTab === "money" && (
+            <MoneyTab
+              team={team}
+              termsSplits={termsSplits}
+            />
+          )}
+          {activeTab === "clanka-md" && (
+            <ClankaMdTab slug={slug} />
           )}
         </div>
       </main>
@@ -389,6 +406,307 @@ export default function WorkspacePage({
     </>
   );
 }
+
+/* ─── Timeline Tab ─── */
+
+function TimelineTab({
+  slug,
+  user,
+  timeline,
+  onPost,
+}: {
+  slug: string;
+  user: { username: string; avatar_url: string } | null;
+  timeline: TimelineEntry[];
+  onPost: (entry: TimelineEntry) => void;
+}) {
+  return (
+    <>
+      <PostUpdateForm slug={slug} user={user} onPost={onPost} />
+      {timeline.length > 0 ? (
+        <div className="mt-6 space-y-3">
+          {timeline.map((entry) => (
+            <TimelineCard key={entry.id} entry={entry} />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-6 rounded-lg border border-border-subtle bg-bg-surface p-8 text-center">
+          <p className="text-body text-text-secondary">
+            No activity yet. Post your first update to get started.
+          </p>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ─── Work Tab ─── */
+
+function WorkTab({ githubRepoUrl }: { githubRepoUrl: string | null }) {
+  const [activeSection, setActiveSection] = useState<"code" | "marketing" | "management">("code");
+
+  const sections = [
+    { id: "code" as const, label: "Code", icon: <Code2 size={14} /> },
+    { id: "marketing" as const, label: "Marketing", icon: <Megaphone size={14} /> },
+    { id: "management" as const, label: "Management", icon: <ClipboardList size={14} /> },
+  ];
+
+  return (
+    <>
+      <div className="flex gap-2">
+        {sections.map((section) => (
+          <button
+            key={section.id}
+            onClick={() => setActiveSection(section.id)}
+            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-small transition-colors ${
+              activeSection === section.id
+                ? "bg-accent-muted text-accent font-medium"
+                : "text-text-muted hover:text-text-primary hover:bg-bg-elevated"
+            }`}
+          >
+            {section.icon}
+            {section.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4">
+        {activeSection === "code" && (
+          <div className="rounded-lg border border-border-subtle bg-bg-surface p-8 text-center">
+            <Code2 size={32} className="mx-auto text-text-muted" />
+            <p className="mt-3 text-body text-text-secondary">
+              Commits and pull requests will appear here once the GitHub integration is active.
+            </p>
+            <p className="mt-1 text-small text-text-muted">
+              Deploy your project from this tab.
+            </p>
+            {githubRepoUrl && (
+              <a
+                href={githubRepoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex items-center gap-1.5 text-small text-accent hover:underline"
+              >
+                <Github size={14} />
+                View repository
+                <ExternalLink size={12} />
+              </a>
+            )}
+          </div>
+        )}
+        {activeSection === "marketing" && (
+          <div className="rounded-lg border border-border-subtle bg-bg-surface p-8 text-center">
+            <Megaphone size={32} className="mx-auto text-text-muted" />
+            <p className="mt-3 text-body text-text-secondary">
+              Track marketing efforts, campaigns, and content here.
+            </p>
+            <p className="mt-1 text-small text-text-muted">
+              Post updates from the Timeline tab.
+            </p>
+          </div>
+        )}
+        {activeSection === "management" && (
+          <div className="rounded-lg border border-border-subtle bg-bg-surface p-8 text-center">
+            <ClipboardList size={32} className="mx-auto text-text-muted" />
+            <p className="mt-3 text-body text-text-secondary">
+              Project management updates, decisions, and planning.
+            </p>
+            <p className="mt-1 text-small text-text-muted">
+              Post updates from the Timeline tab.
+            </p>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+/* ─── Money Tab ─── */
+
+function MoneyTab({
+  team,
+  termsSplits,
+}: {
+  team: WorkspaceTeamMember[];
+  termsSplits: Record<string, number> | undefined;
+}) {
+  return (
+    <>
+      {/* Split bar */}
+      {termsSplits && team.length > 0 && (
+        <div>
+          <h3 className="text-small font-semibold text-text-heading">Revenue Split</h3>
+          <div className="mt-3">
+            <div className="flex h-3 overflow-hidden rounded-full bg-bg-elevated">
+              {team.map((member, i) => {
+                const pct = termsSplits[member.id] ?? 0;
+                if (pct === 0) return null;
+                return (
+                  <div
+                    key={member.id}
+                    className={`${splitBarColors[i % splitBarColors.length]} transition-all duration-150`}
+                    style={{ width: `${pct}%` }}
+                  />
+                );
+              })}
+              <div
+                className="bg-text-muted/30 transition-all duration-150"
+                style={{ width: `${PLATFORM_FEE_PCT}%` }}
+              />
+            </div>
+            <div className="mt-1 flex justify-end">
+              <span className="text-caption text-text-muted">{PLATFORM_FEE_PCT}% platform</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Team earnings table */}
+      <div className={termsSplits ? "mt-6" : ""}>
+        <h3 className="text-small font-semibold text-text-heading">Earnings</h3>
+        <div className="mt-3 space-y-2">
+          {team.map((member, i) => (
+            <div
+              key={member.id}
+              className="flex items-center justify-between rounded-lg border border-border-subtle bg-bg-surface px-4 py-3"
+            >
+              <div className="flex items-center gap-3">
+                <span
+                  className={`inline-block h-3 w-3 rounded-full ${splitBarColors[i % splitBarColors.length]}`}
+                />
+                <div>
+                  <p className="text-small font-medium text-text-heading">
+                    {member.display_name ?? member.username}
+                  </p>
+                  <p className="text-caption text-text-muted">
+                    {termsSplits ? `${termsSplits[member.id] ?? 0}% split` : member.role}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="font-mono text-small text-text-heading">$0.00</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 rounded-lg border border-border-subtle bg-bg-surface p-4 text-center">
+          <DollarSign size={20} className="mx-auto text-text-muted" />
+          <p className="mt-2 text-small text-text-muted">
+            Earnings will appear here once Stripe Connect is set up.
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ─── CLANKA.md Tab ─── */
+
+function ClankaMdTab({ slug }: { slug: string }) {
+  const [data, setData] = useState<ClankaMdResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function load() {
+      try {
+        const res = await fetch(`/api/workspace/${slug}/clanka-md`, {
+          signal: controller.signal,
+        });
+        if (res.ok) {
+          const json: ClankaMdResponse = await res.json();
+          setData(json);
+        } else {
+          setError("Could not load CLANKA.md files.");
+        }
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        setError("Failed to load CLANKA.md files.");
+      }
+      setLoading(false);
+    }
+    load();
+    return () => controller.abort();
+  }, [slug]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 size={20} className="animate-spin text-text-muted" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-border-subtle bg-bg-surface p-8 text-center">
+        <p className="text-body text-status-error">{error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Your CLANKA.md */}
+      <div>
+        <h3 className="text-small font-semibold text-text-heading">Your CLANKA.md</h3>
+        {data?.own ? (
+          <div className="mt-3">
+            <pre className="whitespace-pre-wrap rounded-lg bg-bg-elevated p-4 font-mono text-small text-text-primary">
+              {data.own.content}
+            </pre>
+            <p className="mt-1 text-caption text-text-muted">
+              Last updated {relativeTime(data.own.updated_at)}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-3 rounded-lg border border-border-subtle bg-bg-surface p-8 text-center">
+            <FileText size={32} className="mx-auto text-text-muted" />
+            <p className="mt-3 text-body text-text-secondary">
+              No CLANKA.md yet.
+            </p>
+            <p className="mt-1 text-small text-text-muted">
+              Your AI assistant will create this file when you connect via MCP.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Collaborators' CLANKA.md */}
+      <div className="mt-8">
+        <h3 className="text-small font-semibold text-text-heading">
+          Collaborators&apos; CLANKA.md
+        </h3>
+        {data?.collaborators && data.collaborators.length > 0 ? (
+          <div className="mt-3 space-y-4">
+            {data.collaborators.map((collab) => (
+              <div key={collab.username}>
+                <p className="text-small font-medium text-text-heading">
+                  {collab.display_name ?? collab.username}
+                </p>
+                <pre className="mt-2 whitespace-pre-wrap rounded-lg bg-bg-elevated p-4 font-mono text-small text-text-primary">
+                  {collab.content}
+                </pre>
+                <p className="mt-1 text-caption text-text-muted">
+                  Last updated {relativeTime(collab.updated_at)}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-3 rounded-lg border border-border-subtle bg-bg-surface p-6 text-center">
+            <p className="text-small text-text-muted">
+              Your collaborators haven&apos;t created their CLANKA.md yet.
+            </p>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+/* ─── PostUpdateForm ─── */
 
 function PostUpdateForm({
   slug,
@@ -497,6 +815,8 @@ function PostUpdateForm({
   );
 }
 
+/* ─── SourceBadge ─── */
+
 function SourceBadge({ source }: { source: string }) {
   const isAmber = source === "mcp";
   return (
@@ -511,6 +831,8 @@ function SourceBadge({ source }: { source: string }) {
     </span>
   );
 }
+
+/* ─── TimelineCard ─── */
 
 function TimelineCard({ entry }: { entry: TimelineEntry }) {
   const icon = categoryIcons[entry.category] ?? <ArrowUp size={14} />;
