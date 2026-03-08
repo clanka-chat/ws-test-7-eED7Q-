@@ -411,8 +411,18 @@ function PostUpdateForm({
       });
 
       if (res.ok) {
-        const data: { update: TimelineEntry } = await res.json();
-        onPost(data.update);
+        const data: { id: string; created_at: string } = await res.json();
+        const newEntry: TimelineEntry = {
+          id: data.id,
+          category,
+          title: title.trim(),
+          description: description.trim() || null,
+          source: "web",
+          metadata: null,
+          created_at: data.created_at,
+          user: null,
+        };
+        onPost(newEntry);
         setTitle("");
         setDescription("");
         setCategory("progress");
