@@ -112,12 +112,12 @@ export default function TermsPage({
   }
 
   async function handleAccept() {
-    if (!userId) return;
+    if (!userId || !terms) return;
     setAccepting(true);
     setError(null);
 
     try {
-      const res = await fetch(`/api/workspace/${slug}/terms/accept`, {
+      const res = await fetch(`/api/workspace/${slug}/terms/${terms.id}/accept`, {
         method: "POST",
       });
 
