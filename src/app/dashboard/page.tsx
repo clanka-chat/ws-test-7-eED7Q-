@@ -40,6 +40,7 @@ type DashboardCollaboration = {
     slug: string;
     name: string;
     stage: string;
+    github_repo_url: string | null;
   } | null;
 };
 
@@ -244,6 +245,11 @@ export default function DashboardPage() {
                     <p className="mt-2 text-small text-text-muted">
                       {c.role} &middot; {c.revenue_split}% split
                     </p>
+                    {c.projects.github_repo_url && (
+                      <p className="mt-1 text-caption text-status-success">
+                        Workspace active
+                      </p>
+                    )}
                   </Link>
                 ))}
               </div>
