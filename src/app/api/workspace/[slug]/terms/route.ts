@@ -42,7 +42,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: result.error }, { status: result.status })
   }
 
-  const { project, collaborators } = result
+  const { project, collaborators, isCreator } = result
 
   const { data: terms } = await supabase
     .from('workspace_terms')
@@ -67,6 +67,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
   return NextResponse.json({
     terms: terms ?? null,
     team: members ?? [],
+    is_creator: isCreator,
   })
 }
 

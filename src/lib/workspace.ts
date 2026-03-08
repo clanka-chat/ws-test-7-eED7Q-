@@ -52,13 +52,28 @@ export async function createWorkspace(
   const repoName = `ws-${project.slug}`
   const octokit = await getInstallationOctokit()
 
-  const { data: repo } = await octokit.request('POST /orgs/{org}/repos', {
-    org: GITHUB_ORG,
-    name: repoName,
-    private: true,
-    auto_init: true,
-    description: project.name,
-  })
+  let repo;
+  try {
+    const createRes = await octokit.request('POST /orgs/{org}/repos', {
+      org: GITHUB_ORG,
+      name: repoName,
+      private: true,
+      auto_init: true,
+      description: project.name,
+    });
+    repo = createRes.data;
+  } catch (err: unknown) {
+    // Repo may already exist from a previous partial creation attempt
+    if (err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 422) {
+      const getRes = await octokit.request('GET /repos/{owner}/{repo}', {
+        owner: GITHUB_ORG,
+        repo: repoName,
+      });
+      repo = getRes.data;
+    } else {
+      throw err;
+    }
+  }
 
   // 5. Add team members as GitHub collaborators
   for (const username of githubUsernames) {
