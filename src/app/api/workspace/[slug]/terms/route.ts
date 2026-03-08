@@ -66,7 +66,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
   return NextResponse.json({
     terms: terms ?? null,
-    members: members ?? [],
+    team: members ?? [],
   })
 }
 
