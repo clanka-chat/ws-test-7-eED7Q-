@@ -655,7 +655,7 @@ function CodeSection({ slug, githubRepoUrl, isCreator }: { slug: string; githubR
         <div className="space-y-2">
           <h4 className="text-small font-semibold text-text-heading">Deploy History</h4>
           {deploys.map((deploy) => (
-            <DeployCard key={deploy.id} deploy={deploy} />
+            <DeployCard key={deploy.id} deploy={deploy} slug={slug} />
           ))}
         </div>
       ) : (
@@ -939,40 +939,94 @@ function DeployStatusBadge({ status }: { status: string }) {
   );
 }
 
-function DeployCard({ deploy }: { deploy: DeployEntry }) {
+function DeployCard({ deploy, slug }: { deploy: DeployEntry; slug: string }) {
   const config = deployStatusConfig[deploy.status] ?? { label: deploy.status, className: "bg-bg-elevated text-text-muted" };
   const triggeredBy = deploy.triggered_by?.display_name ?? deploy.triggered_by?.username ?? "System";
+  const [expanded, setExpanded] = useState(false);
+  const [logs, setLogs] = useState<string[] | null>(null);
+  const [logsLoading, setLogsLoading] = useState(false);
+
+  function handleToggle() {
+    const next = !expanded;
+    setExpanded(next);
+    if (next && logs === null) {
+      setLogsLoading(true);
+      fetch(`/api/workspace/${slug}/deploys/${deploy.vercel_deployment_id}/logs`)
+        .then((res) => (res.ok ? res.json() : Promise.reject()))
+        .then((data: { logs: string[] }) => setLogs(data.logs))
+        .catch(() => setLogs(["Failed to load build logs."]))
+        .finally(() => setLogsLoading(false));
+    }
+  }
 
   return (
-    <div className="rounded-lg border border-border-subtle bg-bg-surface p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className={`inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-caption ${config.className}`}>
-            {config.spinning && <Loader2 size={12} className="animate-spin" />}
-            {config.label}
-          </span>
-          {deploy.status === "ready" && deploy.vercel_url && (
-            <a
-              href={deploy.vercel_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-caption text-status-success hover:underline"
-            >
-              {deploy.vercel_url}
-              <ExternalLink size={10} />
-            </a>
+    <div className="rounded-lg border border-border-subtle bg-bg-surface">
+      <button
+        onClick={handleToggle}
+        className="w-full p-3 text-left"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-caption ${config.className}`}>
+              {config.spinning && <Loader2 size={12} className="animate-spin" />}
+              {config.label}
+            </span>
+            {deploy.status === "ready" && deploy.vercel_url && (
+              <a
+                href={deploy.vercel_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 text-caption text-status-success hover:underline"
+              >
+                {deploy.vercel_url}
+                <ExternalLink size={10} />
+              </a>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <SourceBadge source={deploy.source} />
+            {expanded ? <ChevronDown size={12} className="text-text-muted" /> : <ChevronRight size={12} className="text-text-muted" />}
+          </div>
+        </div>
+        {deploy.status === "error" && deploy.error_message && (
+          <p className="mt-1.5 text-caption text-status-error">{deploy.error_message}</p>
+        )}
+        <div className="mt-1.5 flex items-center gap-2 text-caption text-text-muted">
+          <span>{triggeredBy}</span>
+          <span>&middot;</span>
+          <span>{relativeTime(deploy.created_at)}</span>
+          {!expanded && deploy.status === "error" && (
+            <span className="text-text-muted/60">· Click to view logs</span>
           )}
         </div>
-        <SourceBadge source={deploy.source} />
-      </div>
-      {deploy.status === "error" && deploy.error_message && (
-        <p className="mt-1.5 text-caption text-status-error">{deploy.error_message}</p>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-border-subtle px-3 pb-3 pt-2">
+          {logsLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 size={16} className="animate-spin text-text-muted" />
+            </div>
+          ) : logs && logs.length > 0 ? (
+            <pre
+              className="max-h-[300px] overflow-y-auto rounded bg-bg-base p-3 font-mono text-xs leading-relaxed"
+              ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }}
+            >
+              {logs.map((line, i) => {
+                const isError = /error|⨯/i.test(line);
+                return (
+                  <div key={i} className={isError ? "text-status-error" : "text-text-secondary"}>
+                    {line}
+                  </div>
+                );
+              })}
+            </pre>
+          ) : (
+            <p className="text-caption text-text-muted">No logs available.</p>
+          )}
+        </div>
       )}
-      <div className="mt-1.5 flex items-center gap-2 text-caption text-text-muted">
-        <span>{triggeredBy}</span>
-        <span>&middot;</span>
-        <span>{relativeTime(deploy.created_at)}</span>
-      </div>
     </div>
   );
 }
