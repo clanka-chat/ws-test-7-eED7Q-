@@ -9,6 +9,9 @@ import { useUser } from "@/components/useUser";
 import { Loader2, CheckCircle } from "lucide-react";
 import type { WorkspaceTerm } from "../../../../../types/database";
 
+const PLATFORM_FEE_PCT = 5;
+const TEAM_TOTAL = 100 - PLATFORM_FEE_PCT;
+
 const splitBarColors = [
   "bg-accent",
   "bg-status-info",
@@ -57,8 +60,8 @@ export default function TermsPage({
           setTeam(fetchedTeam);
 
           if (!data.terms && fetchedTeam.length > 0) {
-            const equal = Math.floor(100 / fetchedTeam.length);
-            const remainder = 100 - equal * fetchedTeam.length;
+            const equal = Math.floor(TEAM_TOTAL / fetchedTeam.length);
+            const remainder = TEAM_TOTAL - equal * fetchedTeam.length;
             const initial: Record<string, number> = {};
             fetchedTeam.forEach((m, i) => {
               initial[m.id] = equal + (i === 0 ? remainder : 0);
@@ -78,13 +81,13 @@ export default function TermsPage({
 
   function updateSplit(memberId: string, value: string) {
     const num = value === "" ? 0 : parseInt(value, 10);
-    if (isNaN(num) || num < 0 || num > 100) return;
+    if (isNaN(num) || num < 0 || num > TEAM_TOTAL) return;
     setSplits((prev) => ({ ...prev, [memberId]: num }));
   }
 
   async function handlePropose(e: React.FormEvent) {
     e.preventDefault();
-    if (total !== 100) return;
+    if (total !== TEAM_TOTAL) return;
     setSubmitting(true);
     setError(null);
 
@@ -252,7 +255,7 @@ export default function TermsPage({
                     <input
                       type="number"
                       min={0}
-                      max={100}
+                      max={TEAM_TOTAL}
                       value={splits[member.id] ?? 0}
                       onChange={(e) => updateSplit(member.id, e.target.value)}
                       className="h-10 w-20 rounded-md border border-border-default bg-bg-input px-3 text-right font-mono text-small text-text-primary focus:border-border-strong focus:outline-none focus:ring-1 focus:ring-accent"
@@ -263,23 +266,27 @@ export default function TermsPage({
               ))}
 
               <div className="flex items-center justify-between rounded-md bg-bg-elevated px-4 py-3">
-                <span className="text-small font-medium text-text-heading">Total</span>
+                <span className="text-small font-medium text-text-heading">Team Total</span>
                 <span
                   className={`font-mono text-small font-bold ${
-                    total === 100
+                    total === TEAM_TOTAL
                       ? "text-status-success"
                       : "text-status-error"
                   }`}
                 >
-                  {total}%
+                  {total}% / {TEAM_TOTAL}%
                 </span>
               </div>
+
+              <p className="text-caption text-accent">
+                {PLATFORM_FEE_PCT}% platform fee is automatically reserved
+              </p>
 
               <div className="flex gap-3 pt-2">
                 <Button
                   type="submit"
                   size="lg"
-                  disabled={submitting || total !== 100}
+                  disabled={submitting || total !== TEAM_TOTAL}
                 >
                   {submitting ? "Proposing..." : "Propose Terms"}
                 </Button>
@@ -315,18 +322,27 @@ function SplitBar({
   team: TeamMember[];
 }) {
   return (
-    <div className="flex h-3 overflow-hidden rounded-full bg-bg-elevated">
-      {team.map((member, i) => {
-        const pct = splits[member.id] ?? 0;
-        if (pct === 0) return null;
-        return (
-          <div
-            key={member.id}
-            className={`${splitBarColors[i % splitBarColors.length]} transition-all duration-150`}
-            style={{ width: `${pct}%` }}
-          />
-        );
-      })}
+    <div>
+      <div className="flex h-3 overflow-hidden rounded-full bg-bg-elevated">
+        {team.map((member, i) => {
+          const pct = splits[member.id] ?? 0;
+          if (pct === 0) return null;
+          return (
+            <div
+              key={member.id}
+              className={`${splitBarColors[i % splitBarColors.length]} transition-all duration-150`}
+              style={{ width: `${pct}%` }}
+            />
+          );
+        })}
+        <div
+          className="bg-text-muted/30 transition-all duration-150"
+          style={{ width: `${PLATFORM_FEE_PCT}%` }}
+        />
+      </div>
+      <div className="mt-1 flex justify-end">
+        <span className="text-caption text-text-muted">{PLATFORM_FEE_PCT}% platform</span>
+      </div>
     </div>
   );
 }
