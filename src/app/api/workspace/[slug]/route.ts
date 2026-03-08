@@ -69,6 +69,29 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     revenue_split: splits[p.id] ?? 0,
   }))
 
+  // Get latest timeline updates
+  const { data: timelineUpdates } = await supabase
+    .from('workspace_updates')
+    .select('id, category, title, description, source, metadata, created_at, user_id')
+    .eq('project_id', project.id)
+    .order('created_at', { ascending: false })
+    .limit(10)
+
+  const updateUserIds = [...new Set((timelineUpdates ?? []).map(u => u.user_id).filter(Boolean))]
+  const { data: updateProfiles } = updateUserIds.length > 0
+    ? await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url')
+        .in('id', updateUserIds)
+    : { data: [] as { id: string; username: string; display_name: string; avatar_url: string }[] }
+
+  const updateProfileMap = new Map((updateProfiles ?? []).map(p => [p.id, p]))
+
+  const timeline = (timelineUpdates ?? []).map(({ user_id, ...rest }) => ({
+    ...rest,
+    user: user_id ? updateProfileMap.get(user_id) ?? null : null,
+  }))
+
   // Remove creator_id from the project response
   const { creator_id: _, ...projectData } = project
 
@@ -76,5 +99,6 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     project: projectData,
     team,
     terms: terms ?? null,
+    timeline,
   })
 }
