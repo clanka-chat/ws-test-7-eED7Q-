@@ -352,6 +352,17 @@ export default function ProjectPage({
           </div>
         )}
 
+        {user && userId && (userId === project.creator_id || joinStatus === "accepted") && (
+          <div className="mt-6">
+            <Link
+              href={`/project/${project.slug}/terms`}
+              className="text-small text-accent hover:text-accent-hover"
+            >
+              View Terms &rarr;
+            </Link>
+          </div>
+        )}
+
         {user && userId && userId === project.creator_id && (
           <div className="mt-10 border-t border-border-subtle pt-6">
             <Button
