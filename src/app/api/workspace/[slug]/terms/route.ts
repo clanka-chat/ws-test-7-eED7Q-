@@ -50,7 +50,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     .eq('project_id', project.id)
     .order('created_at', { ascending: false })
     .limit(1)
-    .single()
+    .maybeSingle()
 
   // Gather team member profiles: creator + all active collaborators
   const memberIds = [
@@ -87,6 +87,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   if (!isCreator) {
     return NextResponse.json({ error: 'Only the project creator can propose terms' }, { status: 403 })
+  }
+
+  // Check for existing proposed terms
+  const { data: existing } = await supabase
+    .from('workspace_terms')
+    .select('id')
+    .eq('project_id', project.id)
+    .eq('status', 'proposed')
+    .maybeSingle()
+
+  if (existing) {
+    return NextResponse.json({ error: 'There are already proposed terms for this project' }, { status: 409 })
   }
 
   const body = await request.json()

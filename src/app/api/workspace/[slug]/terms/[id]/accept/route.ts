@@ -67,7 +67,7 @@ export async function PATCH(_request: NextRequest, { params }: RouteParams) {
     project.creator_id,
     ...(collaborators?.map(c => c.user_id) ?? []),
   ])
-  const allAccepted = [...allMemberIds].every(id => newAcceptedBy.includes(id))
+  const allAccepted = [...allMemberIds].every(memberId => newAcceptedBy.includes(memberId))
 
   const updates: Record<string, string | string[]> = {
     accepted_by: newAcceptedBy,
