@@ -50,12 +50,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: `category must be one of: ${VALID_CATEGORIES.join(', ')}` }, { status: 400 })
   }
 
-  if (!title || typeof title !== 'string') {
+  if (!title || typeof title !== 'string' || !title.trim()) {
     return NextResponse.json({ error: 'title is required' }, { status: 400 })
   }
 
-  if (title.length > 120) {
+  const trimmedTitle = title.trim()
+  if (trimmedTitle.length > 120) {
     return NextResponse.json({ error: 'title must be 120 characters or less' }, { status: 400 })
+  }
+
+  const trimmedDescription = typeof description === 'string' ? description.trim() : null
+  if (trimmedDescription && trimmedDescription.length > 5000) {
+    return NextResponse.json({ error: 'description must be 5000 characters or less' }, { status: 400 })
   }
 
   const { data, error } = await supabase
@@ -64,13 +70,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       project_id: project.id,
       user_id: user.id,
       category,
-      title,
-      description: typeof description === 'string' ? description : null,
+      title: trimmedTitle,
+      description: trimmedDescription || null,
       source: 'web',
     })
     .select('id, created_at')
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Failed to create update' }, { status: 500 })
   return NextResponse.json(data, { status: 201 })
 }
